@@ -11,11 +11,13 @@ from scapy.compat import raw
 from scapy.layers.dns import DNS
 from scapy.layers.inet import IP, UDP
 
-from utils import get_chksum, get_dns_query, get_base32_final_domains, extract_data_from_udp, b32decode_nopad, \
+from utils import get_dns_query, get_base32_final_domains, extract_data_from_udp, \
     DATA_ID_WIDTH, \
     TOTAL_DATA_OFFSET
 from data_handler import DataHandler
 from utility.socket_tools import disable_udp_connreset
+from utility.others import get_chksum
+from utility.base32 import b32decode_nopad
 
 BEGIN_SRC_PORT = 49152
 END_SRC_PORT = 65534
