@@ -1,0 +1,34 @@
+listen: "127.0.0.1:20443"
+
+auth:
+  type: password
+  password: 12345678a
+  # userpass: 
+ #   user1: pass1
+ #   user2: pass2
+
+
+tls:
+  cert: www-google-com.crt
+  key: www-google-com.key
+  
+  
+#acme:
+#  domains:
+#    - your-domain.com
+#  email: your@email.com 
+
+ 
+#obfs:
+ # type: salamander
+ # salamander:
+ #   password: 12345678s
+
+quic:
+  maxIdleTimeout: 30s
+  # maxIncomingStreams: 1024
+
+ignoreClientBandwidth: true
+
+disableUDP: false
+udpIdleTimeout: 30s

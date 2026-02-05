@@ -1,0 +1,38 @@
+server: "127.0.0.1:10443"
+
+auth: 12345678a
+
+# auth: username:password
+
+tls:
+  sni: www.google.com
+#  insecure: false
+  ca: www-google-com.crt
+
+#obfs:
+#  type: salamander
+#  salamander:
+#    password: 12345678s
+
+quic:
+  maxIdleTimeout: 30s
+  keepAlivePeriod: 10s
+
+tcpForwarding:
+  - listen: 0.0.0.0:20808
+    remote: 127.0.0.1:10808
+
+fastOpen: true  # must be true, false has bug
+
+lazy: true
+
+socks5:
+  listen: 127.0.0.1:30808
+#  username: user
+#  password: pass
+#  disableUDP: false
+
+#udpForwarding:
+#  - listen: 127.0.0.1:5300
+#    remote: 127.0.0.1:5300
+#    timeout: 20s
