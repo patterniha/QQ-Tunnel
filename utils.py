@@ -81,6 +81,8 @@ def extract_data_from_udp(raw_bytes: bytes, b_domain_upper: bytes, offset_width:
         data_offset = data_offset_with_last & NOT_TOTAL_DATA_OFFSET
         last_fragment = bool(data_offset_with_last >> DATA_OFFSET_MOVEMENT)
         fragment_part = BASE32_LOOKUP[o_f_d[offset_width]]
+        if fragment_part < 0:
+            raise ValueError("Invalid base32 character in fragment part")
         e_data = o_f_d[offset_width + 1:]
         if not e_data:
             raise ValueError("No data!")
