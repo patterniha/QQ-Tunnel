@@ -1,7 +1,7 @@
 from numba import njit, uint64
 
 
-@njit(cache=True, fastmath=True)
+@njit
 def checksum_numba(data, length):
     s = uint64(0)
     i = 0
