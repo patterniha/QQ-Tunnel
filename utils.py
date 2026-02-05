@@ -1,20 +1,15 @@
 import base64
 import sys
-import zlib
 from typing import Any
 
-from scapy.compat import raw
 from scapy.layers.dns import DNS, DNSQR
 from utility.base32 import BASE32_CHARS_LIST, BASE32_LOOKUP, base32_to_number, number_to_base32
+from utility.others import get_chksum
 
 DATA_ID_WIDTH = 4
 DATA_OFFSET_MOVEMENT = 5 * DATA_ID_WIDTH - 1
 TOTAL_DATA_OFFSET = 1 << DATA_OFFSET_MOVEMENT
 NOT_TOTAL_DATA_OFFSET = ~TOTAL_DATA_OFFSET
-
-
-def get_chksum(data: bytes, chksum_pass: bytes) -> bytes:
-    return zlib.crc32(data + chksum_pass).to_bytes(4, byteorder="big")
 
 
 def get_dns_query(final_domain: bytes, q_id: int, qtype: str):
