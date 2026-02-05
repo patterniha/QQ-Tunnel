@@ -15,7 +15,7 @@ from utils import get_chksum, get_dns_query, get_base32_final_domains, extract_d
     DATA_ID_WIDTH, \
     TOTAL_DATA_OFFSET
 from data_handler import DataHandler
-from socket_tools import disable_udp_connreset
+from utility.socket_tools import disable_udp_connreset
 
 BEGIN_SRC_PORT = 49152
 END_SRC_PORT = 65534
