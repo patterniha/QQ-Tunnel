@@ -1,0 +1,13 @@
+{
+  "dns_ips": [],
+  "interface_ip": "",
+  "send_domain": "",
+  "recv_domain": "",
+  "h_in_address": "127.0.0.1:10443",
+  "h_out_address": "",
+  "max_domain_len": 99,
+  "max_sub_len": 63,
+  "retries": 0,
+  "chksum_pass": "",
+  "assemble_time": 3
+}
