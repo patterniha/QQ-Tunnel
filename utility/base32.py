@@ -6,9 +6,9 @@ BASE32_CHARS_LIST = [b"A", b"B", b"C", b"D", b"E", b"F", b"G", b"H", b"I", b"J",
 BASE32_CHARS_BYTES = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
 
 # Precompute lookup table for byte -> value (or -1 if invalid)
-_BASE32_LOOKUP = [-1] * 256
+BASE32_LOOKUP = [-1] * 256
 for i, ch in enumerate(BASE32_CHARS_BYTES):
-    _BASE32_LOOKUP[ch] = i
+    BASE32_LOOKUP[ch] = i
 
 
 def number_to_base32(n: int, width: int) -> bytes:
@@ -22,7 +22,7 @@ def number_to_base32(n: int, width: int) -> bytes:
 def base32_to_number(s: bytes) -> int:
     value = 0
     for ch in s:
-        idx = _BASE32_LOOKUP[ch]
+        idx = BASE32_LOOKUP[ch]
         if idx < 0:
             raise ValueError(f"Invalid base32 character: {ch}")
         value = value * 32 + idx

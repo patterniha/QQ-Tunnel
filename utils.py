@@ -5,7 +5,7 @@ from typing import Any
 
 from scapy.compat import raw
 from scapy.layers.dns import DNS, DNSQR
-from utility.base32 import BASE32_CHARS_BYTES, BASE32_CHARS_LIST, base32_to_number, number_to_base32
+from utility.base32 import BASE32_CHARS_LIST, BASE32_LOOKUP, base32_to_number, number_to_base32
 
 DATA_ID_WIDTH = 4
 DATA_OFFSET_MOVEMENT = 5 * DATA_ID_WIDTH - 1
@@ -80,7 +80,7 @@ def extract_data_from_udp(raw_bytes: bytes, b_domain_upper: bytes, offset_width:
         data_offset_with_last = base32_to_number(o_f_d[:offset_width])
         data_offset = data_offset_with_last & NOT_TOTAL_DATA_OFFSET
         last_fragment = bool(data_offset_with_last >> DATA_OFFSET_MOVEMENT)
-        fragment_part = BASE32_CHARS_BYTES.index(o_f_d[offset_width])
+        fragment_part = BASE32_LOOKUP[o_f_d[offset_width]]
         e_data = o_f_d[offset_width + 1:]
         if not e_data:
             raise ValueError("No data!")
