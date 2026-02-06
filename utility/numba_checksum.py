@@ -25,3 +25,7 @@ def checksum_numba(data, length):
 
 def checksum(data: bytes) -> int:
     return int(checksum_numba(data, len(data)))
+
+
+# force compile
+checksum(b"123")
