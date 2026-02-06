@@ -53,17 +53,3 @@ def insert_dots(data: bytes, max_sub: int = 63) -> bytes:
         out_i += len(seg)
 
     return bytes(out)
-
-
-def compute_max_m(s: int, max_allowed: int) -> int:
-    """
-    Find maximum m such that: m + ⌈m / s⌉ ≤ max_allowed
-    """
-    if max_allowed <= 0:
-        return 0
-
-    q = max_allowed // (s + 1)
-    remaining = max_allowed - q * (s + 1)
-    r = max(0, remaining - 1)
-
-    return q * s + r
