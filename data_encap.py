@@ -26,14 +26,16 @@ def get_base32_final_domains(data: bytes, data_offset: int, chunk_len: int, qnam
     i = 0
     c_loop = True
     s_index = 0
+    prefix_normal = number_to_base32_lower(data_offset, data_offset_width)
+    prefix_last = number_to_base32_lower(data_offset | data_offset_nums, data_offset_width)
+    len_data = len(data)
     while c_loop:
         chunk_data = data[s_index:s_index + chunk_len]
         s_index += chunk_len
-        if s_index < len(data):
-            chunk_data = number_to_base32_lower(data_offset, data_offset_width) + BASE32_LIST_LOWER[i] + chunk_data
+        if s_index < len_data:
+            chunk_data = b"".join((prefix_normal, BASE32_LIST_LOWER[i], chunk_data))
         else:
-            chunk_data = number_to_base32_lower(data_offset | data_offset_nums, data_offset_width) + BASE32_LIST_LOWER[
-                i] + chunk_data
+            chunk_data = b"".join((prefix_last, BASE32_LIST_LOWER[i], chunk_data))
             c_loop = False
         final_domain = insert_dots(chunk_data, max_sub_len) + qname_encoded
         if len(final_domain) > max_encoded_domain_len:
