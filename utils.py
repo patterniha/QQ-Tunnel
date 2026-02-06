@@ -4,7 +4,7 @@ from typing import Any
 
 from scapy.layers.dns import DNS, DNSQR
 from utility.base32 import BASE32_CHARS_LIST, BASE32_LOOKUP, base32_to_number, number_to_base32
-from utility.others import get_chksum
+from utility.others import get_crc32_bytes
 
 DATA_ID_WIDTH = 4
 DATA_OFFSET_MOVEMENT = 5 * DATA_ID_WIDTH - 1

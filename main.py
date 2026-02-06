@@ -16,7 +16,7 @@ from utils import get_dns_query, get_base32_final_domains, extract_data_from_udp
     TOTAL_DATA_OFFSET
 from data_handler import DataHandler
 from utility.socket_tools import disable_udp_connreset
-from utility.others import get_chksum
+from utility.others import get_crc32_bytes
 from utility.base32 import b32decode_nopad
 
 BEGIN_SRC_PORT = 49152
@@ -139,7 +139,7 @@ async def wan_recv():
                     data = b32decode_nopad(data)
                     final_data = data[:-4]
                     chksum = data[-4:]
-                    assert final_data and len(chksum) == 4 and get_chksum(final_data, chksum_pass) == chksum
+                    assert final_data and len(chksum) == 4 and get_crc32_bytes(final_data, chksum_pass) == chksum
                 except Exception as e:
                     print("data-error", e)
                     continue
