@@ -18,8 +18,7 @@ def get_base32_final_domains(data: bytes, data_offset: int, chunk_len: int, qnam
                              chksum_pass: bytes, data_offset_width: int, data_offset_nums: int,
                              max_encoded_domain_len: int) -> \
         list[bytes]:
-    data += get_crc32_bytes(data, chksum_pass)
-    data = b32encode_nopad_lower(data)
+    data = b32encode_nopad_lower(data + get_crc32_bytes(data, chksum_pass))
     if (len(data) + chunk_len - 1) // chunk_len > 32:
         print("ERROR: max_domain_len is too small, packet is not sent, len:", len(data))
         return []
