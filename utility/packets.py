@@ -25,13 +25,6 @@ def build_tcp_payload_v4(
     if len(tcp_options) % 4 != 0:
         raise ValueError("tcp_options length must be a multiple of 4 bytes")
 
-    urg_flag = flags & 0x20
-    if urg_flag:
-        if urgent_ptr == 0:
-            raise ValueError("urgent_ptr must be non-zero when URG flag is set")
-    elif urgent_ptr != 0:
-        raise ValueError("urgent_ptr must be zero when URG flag is not set")
-
     data_offset = 5 + (len(tcp_options) // 4)  # 32-bit words
     offset_flags = (data_offset << 12) | (flags & 0x01FF)
 
@@ -89,13 +82,6 @@ def build_tcp_payload_v6(
 ) -> bytes:
     if len(tcp_options) % 4 != 0:
         raise ValueError("tcp_options length must be a multiple of 4 bytes")
-
-    urg_flag = flags & 0x20
-    if urg_flag:
-        if urgent_ptr == 0:
-            raise ValueError("urgent_ptr must be non-zero when URG flag is set")
-    elif urgent_ptr != 0:
-        raise ValueError("urgent_ptr must be zero when URG flag is not set")
 
     data_offset = 5 + (len(tcp_options) // 4)
     offset_flags = (data_offset << 12) | (flags & 0x01FF)
@@ -188,8 +174,6 @@ def build_udp_payload_v6(
     udp_header = struct.pack("!HHHH", src_port, dst_port, udp_len, udp_checksum)
     return udp_header + data
 
-
-# -------- IP header builders --------
 
 def build_ipv4_header(
         payload_len: int,
