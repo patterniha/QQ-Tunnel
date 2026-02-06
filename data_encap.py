@@ -8,7 +8,10 @@ from utility.dns import insert_dots
 def get_chunk_len(max_encoded_domain_len: int, qname_encoded_len: int, max_sub_len: int, data_offset_width=4) -> int:
     max_allowed = max_encoded_domain_len - qname_encoded_len
     m = compute_max_m(max_sub_len, max_allowed)
-    return m - data_offset_width - 1  # fragment_part_width is 1
+    chunk_len = m - data_offset_width - 1  # fragment_part_width is 1
+    if chunk_len <= 0:
+        raise ValueError("max_encoded_domain_len is too small to fit any data")
+    return chunk_len
 
 
 def get_base32_final_domains(data: bytes, data_offset: int, chunk_len: int, qname_encoded: bytes, max_sub_len: int,
