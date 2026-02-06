@@ -1,4 +1,5 @@
-import struct
+from struct import pack
+
 from utility.numba_checksum import checksum
 
 UDP_PROTO = 17
@@ -30,7 +31,7 @@ def build_tcp_payload_v4(
 
     tcp_len = data_offset * 4 + len(data)
 
-    tcp_header = struct.pack(
+    tcp_header = pack(
         "!HHIIHHHH",
         src_port,
         dst_port,
@@ -42,7 +43,7 @@ def build_tcp_payload_v4(
         urgent_ptr,
     )
 
-    pseudo_header = struct.pack(
+    pseudo_header = pack(
         "!4s4sBBH",
         src_ip_packed,
         dst_ip_packed,
@@ -52,7 +53,7 @@ def build_tcp_payload_v4(
     )
 
     tcp_checksum = checksum(pseudo_header + tcp_header + tcp_options + data)
-    tcp_header = struct.pack(
+    tcp_header = pack(
         "!HHIIHHHH",
         src_port,
         dst_port,
@@ -88,7 +89,7 @@ def build_tcp_payload_v6(
 
     tcp_len = data_offset * 4 + len(data)
 
-    tcp_header = struct.pack(
+    tcp_header = pack(
         "!HHIIHHHH",
         src_port,
         dst_port,
@@ -103,12 +104,12 @@ def build_tcp_payload_v6(
     pseudo_header = (
             src_ip_packed +
             dst_ip_packed +
-            struct.pack("!I", tcp_len) +
+            pack("!I", tcp_len) +
             TCP_PSEUDO_V6_TAIL
     )
 
     tcp_checksum = checksum(pseudo_header + tcp_header + tcp_options + data)
-    tcp_header = struct.pack(
+    tcp_header = pack(
         "!HHIIHHHH",
         src_port,
         dst_port,
@@ -131,9 +132,9 @@ def build_udp_payload_v4(
         dst_ip_packed: bytes,
 ) -> bytes:
     udp_len = 8 + len(data)
-    udp_header = struct.pack("!HHHH", src_port, dst_port, udp_len, 0)
+    udp_header = pack("!HHHH", src_port, dst_port, udp_len, 0)
 
-    pseudo_header = struct.pack(
+    pseudo_header = pack(
         "!4s4sBBH",
         src_ip_packed,
         dst_ip_packed,
@@ -146,7 +147,7 @@ def build_udp_payload_v4(
     if udp_checksum == 0:
         udp_checksum = 0xFFFF
 
-    udp_header = struct.pack("!HHHH", src_port, dst_port, udp_len, udp_checksum)
+    udp_header = pack("!HHHH", src_port, dst_port, udp_len, udp_checksum)
     return udp_header + data
 
 
@@ -158,12 +159,12 @@ def build_udp_payload_v6(
         dst_ip_packed: bytes,
 ) -> bytes:
     udp_len = 8 + len(data)
-    udp_header = struct.pack("!HHHH", src_port, dst_port, udp_len, 0)
+    udp_header = pack("!HHHH", src_port, dst_port, udp_len, 0)
 
     pseudo_header = (
             src_ip_packed +
             dst_ip_packed +
-            struct.pack("!I", udp_len) +
+            pack("!I", udp_len) +
             UDP_PSEUDO_V6_TAIL
     )
 
@@ -171,7 +172,7 @@ def build_udp_payload_v6(
     if udp_checksum == 0:
         udp_checksum = 0xFFFF
 
-    udp_header = struct.pack("!HHHH", src_port, dst_port, udp_len, udp_checksum)
+    udp_header = pack("!HHHH", src_port, dst_port, udp_len, udp_checksum)
     return udp_header + data
 
 
@@ -195,7 +196,7 @@ def build_ipv4_header(
     flags_frag = (flags << 13) | (frag_offset & 0x1FFF)
 
     hdr_checksum = 0
-    header = struct.pack(
+    header = pack(
         "!BBHHHBBH4s4s",
         IPV4_VER_IHL,
         dscp_ecn,
@@ -210,7 +211,7 @@ def build_ipv4_header(
     )
     hdr_checksum = checksum(header)
 
-    return struct.pack(
+    return pack(
         "!BBHHHBBH4s4s",
         IPV4_VER_IHL,
         dscp_ecn,
@@ -235,7 +236,7 @@ def build_ipv6_header(
 ) -> bytes:
     flow_label &= 0xFFFFF
     ver_tc_fl = IPV6_VER_TC_FL_BASE | flow_label
-    return struct.pack(
+    return pack(
         "!IHBB16s16s",
         ver_tc_fl,
         payload_len,
