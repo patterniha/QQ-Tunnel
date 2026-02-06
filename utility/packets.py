@@ -20,9 +20,17 @@ def build_tcp_payload_v4(
         tcp_options: bytes,
         src_ip_packed: bytes,
         dst_ip_packed: bytes,
+        urgent_ptr: int = 0,
 ) -> bytes:
     if len(tcp_options) % 4 != 0:
         raise ValueError("tcp_options length must be a multiple of 4 bytes")
+
+    urg_flag = flags & 0x20
+    if urg_flag:
+        if urgent_ptr == 0:
+            raise ValueError("urgent_ptr must be non-zero when URG flag is set")
+    elif urgent_ptr != 0:
+        raise ValueError("urgent_ptr must be zero when URG flag is not set")
 
     data_offset = 5 + (len(tcp_options) // 4)  # 32-bit words
     offset_flags = (data_offset << 12) | (flags & 0x01FF)
@@ -38,7 +46,7 @@ def build_tcp_payload_v4(
         offset_flags,
         window,
         0,  # checksum placeholder
-        0,  # urgent pointer
+        urgent_ptr,
     )
 
     pseudo_header = struct.pack(
@@ -60,7 +68,7 @@ def build_tcp_payload_v4(
         offset_flags,
         window,
         tcp_checksum,
-        0,
+        urgent_ptr,
     )
 
     return tcp_header + tcp_options + data
@@ -77,9 +85,17 @@ def build_tcp_payload_v6(
         tcp_options: bytes,
         src_ip_packed: bytes,
         dst_ip_packed: bytes,
+        urgent_ptr: int = 0,
 ) -> bytes:
     if len(tcp_options) % 4 != 0:
         raise ValueError("tcp_options length must be a multiple of 4 bytes")
+
+    urg_flag = flags & 0x20
+    if urg_flag:
+        if urgent_ptr == 0:
+            raise ValueError("urgent_ptr must be non-zero when URG flag is set")
+    elif urgent_ptr != 0:
+        raise ValueError("urgent_ptr must be zero when URG flag is not set")
 
     data_offset = 5 + (len(tcp_options) // 4)
     offset_flags = (data_offset << 12) | (flags & 0x01FF)
@@ -95,7 +111,7 @@ def build_tcp_payload_v6(
         offset_flags,
         window,
         0,
-        0,
+        urgent_ptr,
     )
 
     pseudo_header = (
@@ -115,7 +131,7 @@ def build_tcp_payload_v6(
         offset_flags,
         window,
         tcp_checksum,
-        0,
+        urgent_ptr,
     )
 
     return tcp_header + tcp_options + data
@@ -183,13 +199,16 @@ def build_ipv4_header(
         ttl: int = 64,
         ip_id: int = 0,
         dont_fragment: bool = False,
+        frag_offset: int = 0,
+        more_fragments: bool = False,
 ) -> bytes:
     dscp_ecn = 0
     total_len = 20 + payload_len
 
     flags = 0x2 if dont_fragment else 0x0
-    frag_offset = 0
-    flags_frag = (flags << 13) | frag_offset
+    if more_fragments:
+        flags |= 0x1
+    flags_frag = (flags << 13) | (frag_offset & 0x1FFF)
 
     hdr_checksum = 0
     header = struct.pack(
