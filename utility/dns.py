@@ -99,7 +99,7 @@ def handle_dns_request(data: bytes) -> tuple[int, int, list, int, int]:
     return qid, qflags, labels, qtype, next_question  # question = data[12:next_question]
 
 
-def create_response(qid: int, qflags: int, question: bytes) -> bytes:
+def create_noerror_empty_response(qid: int, qflags: int, question: bytes) -> bytes:
     # QR=1, AA=1, RD=copy, RCODE=0 (NOERROR)
     rflags = 0x8500 if qflags & 0x100 else 0x8400
 
