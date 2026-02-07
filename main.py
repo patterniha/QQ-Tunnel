@@ -32,18 +32,20 @@ Q_TYPE_INT = QTYPE_MAP[Q_TYPE]
 with open(os.path.join(os.path.dirname(sys.argv[0]), "config.json")) as f:
     config = json.loads(f.read())
 
-send_interface_ip = socket.inet_pton(socket.AF_INET, config["send_interface_ip"])
+send_interface_ip_str = config["send_interface_ip"]
+send_interface_ip = socket.inet_pton(socket.AF_INET, send_interface_ip_str)
 send_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_UDP)
 send_socket.setblocking(False)
 send_socket.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 0)
-send_socket.bind((send_interface_ip, 0))
+send_socket.bind((send_interface_ip_str, 0))
 
-receive_interface_ip = socket.inet_pton(socket.AF_INET, config["receive_interface_ip"])
+receive_interface_ip_str = config["receive_interface_ip"]
+receive_interface_ip = socket.inet_pton(socket.AF_INET, receive_interface_ip_str)
 receive_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 receive_socket.setblocking(False)
 if sys.platform == "win32":
     disable_udp_connreset(receive_socket)
-receive_socket.bind((receive_interface_ip, 53))
+receive_socket.bind((receive_interface_ip_str, 53))
 
 dns_ips_str = config["dns_ips"]
 dns_ips = []
