@@ -11,12 +11,7 @@ DNS_QCLASS_IN = 0x0001
 
 
 def label_domain(domain: bytes) -> list[bytes]:
-    result = []
-    for label in domain.strip(b".").split(b"."):
-        if label:
-            result.append(label)
-
-    return result
+    return [label for label in domain.strip(b".").split(b".") if label]
 
 
 def encode_qname(domain: bytes) -> bytes:
