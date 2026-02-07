@@ -1,41 +1,5 @@
 import asyncio
 import sys
-import enum
-
-
-class State(enum.Enum):
-    S1 = enum.auto()
-    S2 = enum.auto()
-    S3 = enum.auto()
-    S4 = enum.auto()
-    S5 = enum.auto()
-    S6 = enum.auto()
-    S7 = enum.auto()
-    S8 = enum.auto()
-    S9 = enum.auto()
-    S10 = enum.auto()
-    S11 = enum.auto()
-    S12 = enum.auto()
-    S13 = enum.auto()
-    S14 = enum.auto()
-    S15 = enum.auto()
-    S16 = enum.auto()
-    S17 = enum.auto()
-    S18 = enum.auto()
-    S19 = enum.auto()
-    S20 = enum.auto()
-    S21 = enum.auto()
-    S22 = enum.auto()
-    S23 = enum.auto()
-    S24 = enum.auto()
-    S25 = enum.auto()
-    S26 = enum.auto()
-    S27 = enum.auto()
-    S28 = enum.auto()
-    S29 = enum.auto()
-    S30 = enum.auto()
-    S31 = enum.auto()
-    S32 = enum.auto()
 
 
 class DataHandler:
@@ -75,8 +39,8 @@ class DataHandler:
         async with self.lock:
             mpp = self.mpp_list[key]
             if mpp is None:
-                rec_nums = State(1)
-                biggest_index_plus_one = State(fragment_part + 1)
+                rec_nums = 1
+                biggest_index_plus_one = fragment_part + 1
                 seen_last_fragment = last_fragment
                 if seen_last_fragment and rec_nums == biggest_index_plus_one:
                     self.mpp_list[key] = True
@@ -97,12 +61,12 @@ class DataHandler:
                 return b""
 
             mpp[fragment_part] = data
-            rec_nums = State(mpp[-3].value + 1)
+            rec_nums = mpp[-3] + 1
             fp_po = fragment_part + 1
             p_biggest = mpp[-2]
-            if fp_po > p_biggest.value:
+            if fp_po > p_biggest:
                 biggest_updated = True
-                biggest_index_plus_one = State(fp_po)
+                biggest_index_plus_one = fp_po
             else:
                 biggest_index_plus_one = p_biggest
                 biggest_updated = False
@@ -115,7 +79,7 @@ class DataHandler:
 
             if seen_last_fragment and rec_nums == biggest_index_plus_one:
                 self.mpp_list[key] = True
-                return b"".join(mpp[:rec_nums.value])
+                return b"".join(mpp[:rec_nums])
 
             mpp[-3] = rec_nums
             if last_fragment:
