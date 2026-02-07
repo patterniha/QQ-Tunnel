@@ -84,9 +84,9 @@ async def h_recv():
     send_ip_index = random.randint(0, len(dns_ips) - 1)
     while True:
         if h_addr_is_fixed:
-            raw_data = await loop.sock_recv(h_inbound_socket, 16384)
+            raw_data = await loop.sock_recv(h_inbound_socket, 4096)
         else:
-            raw_data, addr_h = await loop.sock_recvfrom(h_inbound_socket, 16384)
+            raw_data, addr_h = await loop.sock_recvfrom(h_inbound_socket, 4096)
             if last_h_addr != addr_h:
                 last_h_addr = addr_h
                 print("the received data is sent to:", addr_h)
@@ -125,7 +125,7 @@ async def wan_recv():
     loop = asyncio.get_running_loop()
     d_handler = DataHandler(TOTAL_DATA_OFFSET, assemble_time)
     while True:
-        raw_data, addr_w = await loop.sock_recvfrom(receive_socket, 16384)
+        raw_data, addr_w = await loop.sock_recvfrom(receive_socket, 4096)
         if last_h_addr is not None:
             try:
                 qid, qflags, all_labels, qtype, next_question = handle_dns_request(raw_data)
