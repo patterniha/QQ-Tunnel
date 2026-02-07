@@ -2,7 +2,8 @@ from numba import njit, uint64
 
 
 @njit
-def checksum_numba(data, length):
+def checksum(data):
+    length = len(data)
     s = uint64(0)
     i = 0
     n = length & ~1  # even length
@@ -21,10 +22,6 @@ def checksum_numba(data, length):
     s = (s & 0xFFFF) + (s >> 16)
 
     return (~s) & 0xFFFF
-
-
-def checksum(data: bytes) -> int:
-    return int(checksum_numba(data, len(data)))
 
 
 # force compile
