@@ -41,15 +41,11 @@ def build_dns_query(qname_encoded: bytes, q_id: int, qtype: int) -> bytes:
 
 def insert_dots(data: bytes, max_sub: int = 63) -> bytes:
     n = len(data)
-    chunks = (n + max_sub - 1) // max_sub
-    out = bytearray(n + chunks)
-
-    out_i = 0
+    # chunks = (n + max_sub - 1) // max_sub
+    out = []
     for i in range(0, n, max_sub):
         seg = data[i:i + max_sub]
-        out[out_i] = len(seg)
-        out_i += 1
-        out[out_i:out_i + len(seg)] = seg
-        out_i += len(seg)
+        out.append(bytes((len(seg),)))
+        out.append(seg)
 
-    return bytes(out)
+    return b"".join(out)
