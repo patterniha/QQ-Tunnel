@@ -47,10 +47,7 @@ if sys.platform == "win32":
     disable_udp_connreset(receive_socket)
 receive_socket.bind((receive_interface_ip_str, 53))
 
-dns_ips_str = config["dns_ips"]
-dns_ips = []
-for ip_str in dns_ips_str:
-    dns_ips.append(socket.inet_pton(socket.AF_INET, ip_str))
+dns_ips = [(ip_str, socket.inet_pton(socket.AF_INET, ip_str)) for ip_str in config["dns_ips"]]
 
 h_inbound_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 h_inbound_socket.setblocking(False)
@@ -117,11 +114,11 @@ async def h_recv():
             iter_send_ip_index = s_iter_send_ip_index
             curr_tries = tries
             while curr_tries > 0:
-                send_ip = dns_ips[iter_send_ip_index]
+                send_ip_str, send_ip = dns_ips[iter_send_ip_index]
                 iter_send_ip_index = (iter_send_ip_index + 1) % len(dns_ips)
                 data = build_udp_payload_v4(build_dns_query(final_domain, use_query_id, Q_TYPE_INT), use_src_port, 53,
                                             send_interface_ip, send_ip)
-                await loop.sock_sendto(send_socket, data, (send_ip, 53))  # (send_ip, 0)
+                await loop.sock_sendto(send_socket, data, (send_ip_str, 53))  # (send_ip_str, 0)
                 curr_tries -= 1
 
 
