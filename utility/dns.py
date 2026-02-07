@@ -10,10 +10,23 @@ DNS_FLAG_RD = 0x0100  # recursion desired
 DNS_QCLASS_IN = 0x0001
 
 
+def label_domain(domain: bytes) -> list[bytes]:
+    result = []
+    for label in domain.strip(b".").split(b"."):
+        if label:
+            result.append(label)
+
+    return result
+
+
 def encode_qname(domain: bytes) -> bytes:
-    parts = [bytes((len(label),)) + label
-             for label in domain.strip(b".").split(b".") if label]
-    return b"".join(parts) + b"\x00"
+    result = []
+    for label in domain.strip(b".").split(b"."):
+        if label:
+            result.append(bytes((len(label),)))
+            result.append(label)
+
+    return b"".join(result) + b"\x00"
 
 
 def build_dns_query(qname_encoded: bytes, q_id: int, qtype: int) -> bytes:
