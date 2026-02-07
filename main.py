@@ -12,7 +12,7 @@ from data_handler import DataHandler
 from utility.socket_tools import disable_udp_connreset
 from utility.others import get_crc32_bytes
 from utility.base32 import b32decode_nopad
-from utility.dns import QTYPE_MAP, encode_qname, build_dns_query
+from utility.dns import QTYPE_MAP, label_domain, encode_qname, build_dns_query, handle_dns_request, create_response
 from data_encap import get_base32_final_domains, get_chunk_len
 from utility.packets import build_udp_payload_v4
 
@@ -58,12 +58,12 @@ max_encoded_domain_len = config["max_domain_len"] + 2
 max_sub_len = config["max_sub_len"]
 if max_sub_len > 63:
     sys.exit("max_sub_len cannot be greater than 63!")
-chksum_pass = str(config["chksum_pass"]).encode()
+chksum_pass = config["chksum_pass"].encode()
 assemble_time = float(config["assemble_time"])
 tries = config["retries"] + 1
-recv_domain = encode_qname(config["recv_domain"])
-send_domain = encode_qname(config["send_domain"])
-chunk_len = get_chunk_len(max_encoded_domain_len, len(send_domain), max_sub_len, DATA_OFFSET_WIDTH)
+recv_domain_labels = label_domain(config["recv_domain"].encode())
+send_domain_encode_qname = encode_qname(config["send_domain"].encode())
+chunk_len = get_chunk_len(max_encoded_domain_len, len(send_domain_encode_qname), max_sub_len, DATA_OFFSET_WIDTH)
 
 if config["h_out_address"]:
     last_h_addr = (config["h_out_address"].rsplit(":", 1)[0], int(config["h_out_address"].rsplit(":", 1)[1]))
@@ -92,7 +92,8 @@ async def h_recv():
 
         if not raw_data:
             continue
-        final_domains = get_base32_final_domains(raw_data, data_offset, chunk_len, send_domain, max_sub_len,
+        final_domains = get_base32_final_domains(raw_data, data_offset, chunk_len, send_domain_encode_qname,
+                                                 max_sub_len,
                                                  chksum_pass, DATA_OFFSET_WIDTH, TOTAL_DATA_OFFSET,
                                                  max_encoded_domain_len)
         if not final_domains:
@@ -126,10 +127,10 @@ async def wan_recv():
         raw_data, addr_w = await loop.sock_recvfrom(receive_socket, 16384)
         if last_h_addr is not None:
             try:
-                data_offset, fragment_part, last_fragment, chunk_data, query_id, query_qd = extract_data_from_udp(
-                    raw_data,
-                    b_recv_domain_upper,
-                    DATA_ID_WIDTH, Q_TYPE_INT)
+                qid, qflags, labels, qtype, next_question = handle_dns_request(raw_data)
+                data_offset, fragment_part, last_fragment, chunk_data = extract_data_from_udp(labels,
+                                                                                              b_recv_domain_upper,
+                                                                                              DATA_ID_WIDTH)
             except Exception as e:
                 print("recv-error", e)
                 continue
