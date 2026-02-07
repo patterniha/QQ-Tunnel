@@ -62,6 +62,7 @@ chksum_pass = config["chksum_pass"].encode()
 assemble_time = float(config["assemble_time"])
 tries = config["retries"] + 1
 recv_domain_labels = label_domain(config["recv_domain"].encode())
+len_recv_domain_labels = len(recv_domain_labels)
 send_domain_encode_qname = encode_qname(config["send_domain"].encode())
 chunk_len = get_chunk_len(max_encoded_domain_len, len(send_domain_encode_qname), max_sub_len, DATA_OFFSET_WIDTH)
 
@@ -127,15 +128,19 @@ async def wan_recv():
         raw_data, addr_w = await loop.sock_recvfrom(receive_socket, 16384)
         if last_h_addr is not None:
             try:
-                qid, qflags, labels, qtype, next_question = handle_dns_request(raw_data)
-                data_offset, fragment_part, last_fragment, chunk_data = extract_data_from_udp(labels,
-                                                                                              b_recv_domain_upper,
-                                                                                              DATA_ID_WIDTH)
+                qid, qflags, all_labels, qtype, next_question = handle_dns_request(raw_data)
+                domain_labels = all_labels[-len_recv_domain_labels:]
+                assert domain_labels == recv_domain_labels
+                data_with_header = b"".join(all_labels[:-len_recv_domain_labels])
+                if not data_with_header:
+                    raise ValueError("no header")
+                data_offset, fragment_part, last_fragment, chunk_data = get_chunk_data(data_with_header,
+                                                                                       DATA_OFFSET_WIDTH)
             except Exception as e:
                 print("recv-error", e)
                 continue
 
-            response = raw(DNS(id=query_id, qr=1, rcode=3, qd=query_qd, aa=0))
+            response = create_response(qid, qflags, raw_data[12:next_question])
             await loop.sock_sendto(receive_socket, response, addr_w)
 
             data = await d_handler.new_data_event(data_offset, fragment_part, last_fragment, chunk_data)
