@@ -6,60 +6,64 @@ import socket
 import json
 import os
 import sys
+from urllib.parse import uses_query
 
-from scapy.compat import raw
-from scapy.layers.dns import DNS
-from scapy.layers.inet import IP, UDP
-
-from utils import get_dns_query, get_base32_final_domains, extract_data_from_udp, \
-    DATA_ID_WIDTH, \
-    TOTAL_DATA_OFFSET
 from data_handler import DataHandler
 from utility.socket_tools import disable_udp_connreset
 from utility.others import get_crc32_bytes
 from utility.base32 import b32decode_nopad
+from utility.dns import QTYPE_MAP, encode_qname, build_dns_query
+from data_encap import get_base32_final_domains, get_chunk_len
+from utility.packets import build_udp_payload_v4
 
 BEGIN_SRC_PORT = 49152
 END_SRC_PORT = 65534
 
-Q_TYPE_STR = "A"
-Q_TYPE_INT = 1
+Q_TYPE = "A"
+
+DATA_OFFSET_WIDTH = 4
+
+##############################
+DATA_OFFSET_MOVEMENT = 5 * DATA_OFFSET_WIDTH - 1
+TOTAL_DATA_OFFSET = 1 << DATA_OFFSET_MOVEMENT
+TOTAL_DATA_OFFSET_MINUS_ONE = TOTAL_DATA_OFFSET - 1
+Q_TYPE_INT = QTYPE_MAP[Q_TYPE]
 
 with open(os.path.join(os.path.dirname(sys.argv[0]), "config.json")) as f:
     config = json.loads(f.read())
 
-interface_ip = config["interface_ip"]
-dns_ips = config["dns_ips"]
+send_interface_ip = socket.inet_pton(socket.AF_INET, config["send_interface_ip"])
+send_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_UDP)
+send_socket.setblocking(False)
+send_socket.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 0)
+send_socket.bind((send_interface_ip, 0))
 
-outbound_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_UDP)
-outbound_socket.setblocking(False)
-outbound_socket.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 0)
-outbound_socket.bind((interface_ip, 0))
+receive_interface_ip = socket.inet_pton(socket.AF_INET, config["receive_interface_ip"])
+receive_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+receive_socket.setblocking(False)
+if sys.platform == "win32":
+    disable_udp_connreset(receive_socket)
+receive_socket.bind((receive_interface_ip, 53))
+
+dns_ips_str = config["dns_ips"]
+dns_ips = []
+for ip_str in dns_ips_str:
+    dns_ips.append(socket.inet_pton(socket.AF_INET, ip_str))
 
 h_inbound_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 h_inbound_socket.setblocking(False)
 h_inbound_socket.bind((config["h_in_address"].rsplit(":", 1)[0], int(config["h_in_address"].rsplit(":", 1)[1])))
 
-wan_inbound_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-wan_inbound_socket.setblocking(False)
-if sys.platform == "win32":
-    disable_udp_connreset(wan_inbound_socket)
-wan_inbound_socket.bind((interface_ip, 53))
-
-max_domain_len = config["max_domain_len"]
+max_encoded_domain_len = config["max_domain_len"] + 2
 max_sub_len = config["max_sub_len"]
+if max_sub_len > 63:
+    sys.exit("max_sub_len cannot be greater than 63!")
 chksum_pass = str(config["chksum_pass"]).encode()
 assemble_time = float(config["assemble_time"])
 tries = config["retries"] + 1
-recv_domain: str = config["recv_domain"]
-send_domain: str = config["send_domain"]
-if recv_domain[-1] == ".":
-    recv_domain = recv_domain[:-1]
-if send_domain[-1] == ".":
-    send_domain = send_domain[:-1]
-
-b_send_domain_lower = send_domain.lower().encode()
-b_recv_domain_upper = recv_domain.upper().encode()
+recv_domain = encode_qname(config["recv_domain"])
+send_domain = encode_qname(config["send_domain"])
+chunk_len = get_chunk_len(max_encoded_domain_len, len(send_domain), max_sub_len, DATA_OFFSET_WIDTH)
 
 if config["h_out_address"]:
     last_h_addr = (config["h_out_address"].rsplit(":", 1)[0], int(config["h_out_address"].rsplit(":", 1)[1]))
@@ -88,38 +92,38 @@ async def h_recv():
 
         if not raw_data:
             continue
-        final_domains = get_base32_final_domains(raw_data, data_offset, b_send_domain_lower, max_domain_len,
-                                                 max_sub_len, chksum_pass)
+        final_domains = get_base32_final_domains(raw_data, data_offset, chunk_len, send_domain, max_sub_len,
+                                                 chksum_pass, DATA_OFFSET_WIDTH, TOTAL_DATA_OFFSET,
+                                                 max_encoded_domain_len)
         if not final_domains:
             continue
-        data_offset = (data_offset + 1) % TOTAL_DATA_OFFSET
+        data_offset = (data_offset + 1) & TOTAL_DATA_OFFSET_MINUS_ONE
         s_iter_send_ip_index = send_ip_index
         send_ip_index = (send_ip_index + tries) % len(dns_ips)
         for final_domain in final_domains:
-            udp_dns = UDP(sport=src_port, dport=53) / get_dns_query(final_domain, query_id, Q_TYPE_STR)
+            use_src_port = src_port
+            use_query_id = query_id
             if src_port != END_SRC_PORT:
                 src_port += 1
             else:
                 src_port = BEGIN_SRC_PORT
-            query_id = (query_id + 1) % 65536
+            query_id = (query_id + 1) & 0xFFFF
             iter_send_ip_index = s_iter_send_ip_index
             curr_tries = tries
             while curr_tries > 0:
                 send_ip = dns_ips[iter_send_ip_index]
                 iter_send_ip_index = (iter_send_ip_index + 1) % len(dns_ips)
-                ip_udp_dns = IP(src=interface_ip, dst=send_ip) / udp_dns
-                data = raw(ip_udp_dns[UDP])
-                await loop.sock_sendto(outbound_socket, data, (send_ip, 53))  # (send_ip, 0)
+                data = build_udp_payload_v4(build_dns_query(final_domain, use_query_id, Q_TYPE_INT), use_src_port, 53,
+                                            send_interface_ip, send_ip)
+                await loop.sock_sendto(send_socket, data, (send_ip, 53))  # (send_ip, 0)
                 curr_tries -= 1
 
 
 async def wan_recv():
     loop = asyncio.get_running_loop()
-    global max_domain_len
-    global max_sub_len
     d_handler = DataHandler(TOTAL_DATA_OFFSET, assemble_time)
     while True:
-        raw_data, addr_w = await loop.sock_recvfrom(wan_inbound_socket, 16384)
+        raw_data, addr_w = await loop.sock_recvfrom(receive_socket, 16384)
         if last_h_addr is not None:
             try:
                 data_offset, fragment_part, last_fragment, chunk_data, query_id, query_qd = extract_data_from_udp(
@@ -131,7 +135,7 @@ async def wan_recv():
                 continue
 
             response = raw(DNS(id=query_id, qr=1, rcode=3, qd=query_qd, aa=0))
-            await loop.sock_sendto(wan_inbound_socket, response, addr_w)
+            await loop.sock_sendto(receive_socket, response, addr_w)
 
             data = await d_handler.new_data_event(data_offset, fragment_part, last_fragment, chunk_data)
             if data:
