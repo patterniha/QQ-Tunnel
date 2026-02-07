@@ -57,6 +57,8 @@ h_inbound_socket.setblocking(False)
 h_inbound_socket.bind((config["h_in_address"].rsplit(":", 1)[0], int(config["h_in_address"].rsplit(":", 1)[1])))
 
 max_encoded_domain_len = config["max_domain_len"] + 2
+if max_encoded_domain_len > 255:
+    sys.exit("the maximum domain length is 253 bytes")
 max_sub_len = config["max_sub_len"]
 if max_sub_len > 63:
     sys.exit("max_sub_len cannot be greater than 63!")
