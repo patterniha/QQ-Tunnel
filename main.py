@@ -1,4 +1,5 @@
 # todo: DNS(rd=1,qdcount=2,qd=DNSQR(qname="example.com", qtype="A") / DNSQR(qname="example.net", qtype="AAAA"))
+# todo: test ips
 
 import asyncio
 import random
@@ -62,9 +63,9 @@ if max_sub_len > 63:
 chksum_pass = config["chksum_pass"].encode()
 assemble_time = float(config["assemble_time"])
 tries = config["retries"] + 1
-recv_domain_labels = label_domain(config["recv_domain"].encode())
+recv_domain_labels = label_domain(config["recv_domain"].encode().lower())
 len_recv_domain_labels = len(recv_domain_labels)
-send_domain_encode_qname = encode_qname(config["send_domain"].encode())
+send_domain_encode_qname = encode_qname(config["send_domain"].encode().lower())
 chunk_len = get_chunk_len(max_encoded_domain_len, len(send_domain_encode_qname), max_sub_len, DATA_OFFSET_WIDTH)
 
 if config["h_out_address"]:
@@ -130,13 +131,17 @@ async def wan_recv():
         if last_h_addr is not None:
             try:
                 qid, qflags, all_labels, qtype, next_question = handle_dns_request(raw_data)
+                if qtype != Q_TYPE_INT:
+                    raise ValueError("invalid qtype!")
                 domain_labels = all_labels[-len_recv_domain_labels:]
-                assert domain_labels == recv_domain_labels
+                assert [label.lower() for label in domain_labels] == recv_domain_labels
                 data_with_header = b"".join(all_labels[:-len_recv_domain_labels])
                 if not data_with_header:
                     raise ValueError("no header")
                 data_offset, fragment_part, last_fragment, chunk_data = get_chunk_data(data_with_header,
                                                                                        DATA_OFFSET_WIDTH)
+                if not chunk_data:
+                    raise ValueError("no chunk data")
             except Exception as e:
                 print("recv-error", e)
                 continue
