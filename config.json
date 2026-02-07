@@ -1,6 +1,7 @@
 {
   "dns_ips": [],
-  "interface_ip": "",
+  "send_interface_ip": "",
+  "receive_interface_ip": "",
   "send_domain": "",
   "recv_domain": "",
   "h_in_address": "127.0.0.1:10443",

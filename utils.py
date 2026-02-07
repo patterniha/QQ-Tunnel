@@ -6,11 +6,6 @@ from scapy.layers.dns import DNS, DNSQR
 from utility.base32 import BASE32_CHARS_LIST, BASE32_LOOKUP, base32_to_number, number_to_base32
 from utility.others import get_crc32_bytes
 
-DATA_ID_WIDTH = 4
-DATA_OFFSET_MOVEMENT = 5 * DATA_ID_WIDTH - 1
-TOTAL_DATA_OFFSET = 1 << DATA_OFFSET_MOVEMENT
-NOT_TOTAL_DATA_OFFSET = ~TOTAL_DATA_OFFSET
-
 
 
 
@@ -33,7 +28,7 @@ def extract_data_from_udp(raw_bytes: bytes, b_domain_upper: bytes, offset_width:
         o_f_d = b_final_domain[:-len(b_domain_upper) - 1]
         o_f_d = o_f_d.replace(b".", b"")
         data_offset_with_last = base32_to_number(o_f_d[:offset_width])
-        data_offset = data_offset_with_last & NOT_TOTAL_DATA_OFFSET
+        data_offset = data_offset_with_last & TOTAL_DATA_OFFSET_MINUS_ONE
         last_fragment = bool(data_offset_with_last >> DATA_OFFSET_MOVEMENT)
         fragment_part = BASE32_LOOKUP[o_f_d[offset_width]]
         if fragment_part < 0:
