@@ -52,7 +52,7 @@ def insert_dots(data: bytes, max_sub: int = 63) -> bytes:
 
 
 def handle_question(data: bytes, offset: int) -> tuple[list, int, int]:
-    lables = []
+    labels = []
     len_data = len(data)
     while offset < len_data:
         label_len = data[offset]
@@ -63,12 +63,12 @@ def handle_question(data: bytes, offset: int) -> tuple[list, int, int]:
             next_question = offset + 5
             if next_question > len_data:
                 raise ValueError
-            return lables, qtype, next_question
+            return labels, qtype, next_question
         if label_len > 63:
             raise ValueError
         lable_s = offset + 1
         offset = lable_s + label_len
-        lables.append(data[lable_s:offset])
+        labels.append(data[lable_s:offset])
     raise ValueError
 
 
@@ -81,9 +81,9 @@ def handle_dns_request(data: bytes) -> tuple[int, int, list, int, int]:
         raise ValueError("not 1 question")
     if qflags & 0x8000:
         raise ValueError("not query")
-    lables, qtype, next_question = handle_question(data, 12)
+    labels, qtype, next_question = handle_question(data, 12)
 
-    return qid, qflags, lables, qtype, next_question  # question = data[12:next_question]
+    return qid, qflags, labels, qtype, next_question  # question = data[12:next_question]
 
 
 def create_response(qid: int, qflags: int, question: bytes) -> bytes:
