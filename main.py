@@ -15,7 +15,7 @@ from utility.others import get_crc32_bytes
 from utility.base32 import b32decode_nopad
 from utility.dns import QTYPE_MAP, label_domain, encode_qname, build_dns_query, handle_dns_request, \
     create_noerror_empty_response
-from data_encap import get_base32_final_domains, get_chunk_len
+from data_cap import get_base32_final_domains, get_chunk_len
 from utility.packets import build_udp_payload_v4
 
 BEGIN_SRC_PORT = 49152
