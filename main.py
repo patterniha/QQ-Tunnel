@@ -7,15 +7,13 @@ import socket
 import json
 import os
 import sys
-from urllib.parse import uses_query
 
 from data_handler import DataHandler
 from utility.socket_tools import disable_udp_connreset
-from utility.others import get_crc32_bytes
 from utility.base32 import b32decode_nopad
 from utility.dns import QTYPE_MAP, label_domain, encode_qname, build_dns_query, handle_dns_request, \
     create_noerror_empty_response
-from data_cap import get_base32_final_domains, get_chunk_len
+from data_cap import get_crc32_bytes, get_base32_final_domains, get_chunk_len, get_chunk_data
 from utility.packets import build_udp_payload_v4
 
 BEGIN_SRC_PORT = 49152
@@ -139,7 +137,9 @@ async def wan_recv():
                 if not data_with_header:
                     raise ValueError("no header")
                 data_offset, fragment_part, last_fragment, chunk_data = get_chunk_data(data_with_header,
-                                                                                       DATA_OFFSET_WIDTH)
+                                                                                       DATA_OFFSET_WIDTH,
+                                                                                       TOTAL_DATA_OFFSET_MINUS_ONE,
+                                                                                       DATA_OFFSET_MOVEMENT)
                 if not chunk_data:
                     raise ValueError("no chunk data")
             except Exception as e:
