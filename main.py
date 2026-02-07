@@ -12,7 +12,8 @@ from data_handler import DataHandler
 from utility.socket_tools import disable_udp_connreset
 from utility.others import get_crc32_bytes
 from utility.base32 import b32decode_nopad
-from utility.dns import QTYPE_MAP, label_domain, encode_qname, build_dns_query, handle_dns_request, create_noerror_empty_response
+from utility.dns import QTYPE_MAP, label_domain, encode_qname, build_dns_query, handle_dns_request, \
+    create_noerror_empty_response
 from data_encap import get_base32_final_domains, get_chunk_len
 from utility.packets import build_udp_payload_v4
 
@@ -140,20 +141,23 @@ async def wan_recv():
                 print("recv-error", e)
                 continue
 
-            data = await d_handler.new_data_event(data_offset, fragment_part, last_fragment, chunk_data)
-            if data:
-                try:
-                    data = b32decode_nopad(data)
-                    final_data = data[:-4]
-                    chksum = data[-4:]
-                    assert final_data and len(chksum) == 4 and get_crc32_bytes(final_data, chksum_pass) == chksum
-                except Exception as e:
-                    print("data-error", e)
-                else:
-                    if h_addr_is_fixed:
-                        await loop.sock_sendall(h_inbound_socket, final_data)
+            if fragment_part == 31 and not last_fragment:
+                ...  # do other things?
+            else:
+                data = await d_handler.new_data_event(data_offset, fragment_part, last_fragment, chunk_data)
+                if data:
+                    try:
+                        data = b32decode_nopad(data)
+                        final_data = data[:-4]
+                        chksum = data[-4:]
+                        assert final_data and len(chksum) == 4 and get_crc32_bytes(final_data, chksum_pass) == chksum
+                    except Exception as e:
+                        print("data-error", e)
                     else:
-                        await loop.sock_sendto(h_inbound_socket, final_data, last_h_addr)
+                        if h_addr_is_fixed:
+                            await loop.sock_sendall(h_inbound_socket, final_data)
+                        else:
+                            await loop.sock_sendto(h_inbound_socket, final_data, last_h_addr)
 
             response = create_noerror_empty_response(qid, qflags, raw_data[12:next_question])
             await loop.sock_sendto(receive_socket, response, addr_w)
