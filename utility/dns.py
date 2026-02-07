@@ -1,4 +1,4 @@
-from struct import pack
+from struct import pack, unpack_from
 
 QTYPE_MAP = {
     "A": 1, "NS": 2, "CNAME": 5, "SOA": 6, "PTR": 12,
@@ -49,3 +49,47 @@ def insert_dots(data: bytes, max_sub: int = 63) -> bytes:
         out.append(seg)
 
     return b"".join(out)
+
+
+def handle_question(data: bytes, offset: int) -> tuple[list, int, int]:
+    lables = []
+    len_data = len(data)
+    while offset < len_data:
+        label_len = data[offset]
+        if label_len == 0:
+            qtype, qclass = unpack_from("!HH", data, offset + 1)
+            if qclass != 1:
+                raise ValueError
+            next_question = offset + 5
+            if next_question > len_data:
+                raise ValueError
+            return lables, qtype, next_question
+        if label_len > 63:
+            raise ValueError
+        lable_s = offset + 1
+        offset = lable_s + label_len
+        lables.append(data[lable_s:offset])
+    raise ValueError
+
+
+def handle_dns_request(data: bytes) -> tuple[int, int, list, int, int]:
+    if len(data) < 17:
+        raise ValueError
+
+    qid, qflags, qdcount = unpack_from("!HHH", data, 0)
+    if qdcount != 1:
+        raise ValueError("not 1 question")
+    if qflags & 0x8000:
+        raise ValueError("not query")
+    lables, qtype, next_question = handle_question(data, 12)
+
+    return qid, qflags, lables, qtype, next_question  # question = data[12:next_question]
+
+
+def create_response(qid: int, qflags: int, question: bytes) -> bytes:
+    # QR=1, AA=1, RD=copy, RCODE=0 (NOERROR)
+    rflags = 0x8500 if qflags & 0x100 else 0x8400
+
+    header = pack("!HHHHHH", qid, rflags, 1, 0, 0, 0)
+
+    return header + question
