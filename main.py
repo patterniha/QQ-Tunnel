@@ -51,6 +51,8 @@ dns_ips = [(ip_str, socket.inet_pton(socket.AF_INET, ip_str)) for ip_str in conf
 
 h_inbound_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 h_inbound_socket.setblocking(False)
+if sys.platform == "win32":
+    disable_udp_connreset(h_inbound_socket)
 h_inbound_socket.bind((config["h_in_address"].rsplit(":", 1)[0], int(config["h_in_address"].rsplit(":", 1)[1])))
 
 max_encoded_domain_len = config["max_domain_len"] + 2
