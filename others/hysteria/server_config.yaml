@@ -26,6 +26,7 @@ tls:
 
 quic:
   maxIdleTimeout: 30s
+  disablePathMTUDiscovery: false
   # maxIncomingStreams: 1024
 
 ignoreClientBandwidth: true
