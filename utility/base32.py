@@ -31,7 +31,7 @@ def base32_to_number(s: bytes) -> int:
         idx = BASE32_LOOKUP[ch]
         if idx < 0:
             raise ValueError(f"Invalid base32 character: {ch}")
-        value = value * 32 + idx
+        value = (value << 5) + idx
     return value
 
 
