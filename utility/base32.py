@@ -20,7 +20,7 @@ for i, ch in enumerate(BASE32_CHARS_BYTES_UPPER):
 def number_to_base32_lower(n: int, width: int) -> bytes:
     result = [b""] * width
     for i in range(width - 1, -1, -1):
-        n, remainder = divmod(n, 32)
+        remainder, n = n & 31, n >> 5
         result[i] = BASE32_LIST_LOWER[remainder]
     return b"".join(result)
 
