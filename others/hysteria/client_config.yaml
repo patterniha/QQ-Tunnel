@@ -16,7 +16,7 @@ tls:
 
 quic:
   maxIdleTimeout: 30s
-  disablePathMTUDiscovery: false
+  disablePathMTUDiscovery: true
   keepAlivePeriod: 10s
 
 tcpForwarding:
