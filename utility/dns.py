@@ -6,9 +6,6 @@ QTYPE_MAP = {
     "DS": 43, "DNSKEY": 48, "OPT": 41, "CAA": 257, "ANY": 255,
 }
 
-DNS_FLAG_RD = 0x0100  # recursion desired
-DNS_QCLASS_IN = 0x0001
-
 
 def label_domain(domain: bytes) -> list[bytes]:
     return [label for label in domain.strip(b".").split(b".") if label]
@@ -36,14 +33,14 @@ def build_dns_query(qname_encoded: bytes, q_id: int, qtype: int) -> bytes:
     header = pack(
         "!HHHHHH",
         q_id & 0xFFFF,  # ID
-        DNS_FLAG_RD,  # flags
+        0x0100,  # flags: recursion desired
         1,  # QDCOUNT
         0,  # ANCOUNT
         0,  # NSCOUNT
         0,  # ARCOUNT
     )
 
-    question = qname_encoded + pack("!HH", qtype & 0xFFFF, DNS_QCLASS_IN)
+    question = qname_encoded + pack("!HH", qtype & 0xFFFF, 0x0001)
     return header + question
 
 
