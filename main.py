@@ -24,8 +24,7 @@ Q_TYPE = "A"
 DATA_OFFSET_WIDTH = 4
 
 ##############################
-DATA_OFFSET_MOVEMENT = 5 * DATA_OFFSET_WIDTH - 1
-TOTAL_DATA_OFFSET = 1 << DATA_OFFSET_MOVEMENT
+TOTAL_DATA_OFFSET = 1 << 5 * DATA_OFFSET_WIDTH
 TOTAL_DATA_OFFSET_MINUS_ONE = TOTAL_DATA_OFFSET - 1
 Q_TYPE_INT = QTYPE_MAP[Q_TYPE]
 
@@ -83,7 +82,7 @@ async def h_recv():
     global last_h_addr
     src_port = random.randint(BEGIN_SRC_PORT, END_SRC_PORT)
     query_id = random.randint(0, 65535)
-    data_offset = random.randint(0, TOTAL_DATA_OFFSET - 1)
+    data_offset = random.randint(0, TOTAL_DATA_OFFSET_MINUS_ONE)
     send_ip_index = random.randint(0, len(dns_ips) - 1)
     while True:
         if h_addr_is_fixed:
@@ -97,9 +96,7 @@ async def h_recv():
         if not raw_data:
             continue
         final_domains = get_base32_final_domains(raw_data, data_offset, chunk_len, send_domain_encode_qname,
-                                                 max_sub_len,
-                                                 chksum_pass, DATA_OFFSET_WIDTH, TOTAL_DATA_OFFSET,
-                                                 max_encoded_domain_len)
+                                                 max_sub_len, chksum_pass, DATA_OFFSET_WIDTH, max_encoded_domain_len)
         if not final_domains:
             continue
         data_offset = (data_offset + 1) & TOTAL_DATA_OFFSET_MINUS_ONE
@@ -140,12 +137,10 @@ async def wan_recv():
                 if not data_with_header:
                     raise ValueError("no header")
                 data_offset, fragment_part, last_fragment, chunk_data = get_chunk_data(data_with_header,
-                                                                                       DATA_OFFSET_WIDTH,
-                                                                                       TOTAL_DATA_OFFSET_MINUS_ONE,
-                                                                                       DATA_OFFSET_MOVEMENT)
+                                                                                       DATA_OFFSET_WIDTH)
                 if not chunk_data:
                     raise ValueError("no chunk data")
-                if fragment_part == 31 and not last_fragment:
+                if fragment_part == 63 and not last_fragment:
                     raise ValueError("last possible fragment part but not last fragment")
             except Exception as e:
                 print("recv-error", e)

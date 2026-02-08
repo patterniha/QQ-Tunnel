@@ -49,6 +49,8 @@ class DataHandler:
 
                 mpp = [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
                        None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                       None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                       None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
                        rec_nums, biggest_index_plus_one, seen_last_fragment]
                 mpp[fragment_part] = data
                 self.mpp_list[key] = mpp
