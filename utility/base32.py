@@ -36,7 +36,7 @@ def base32_to_number(s: bytes) -> int:
 
 
 def b32decode_nopad(s: bytes) -> bytes:
-    pad = (-len(s)) % 8
+    pad = (-len(s)) & 7
     return base64.b32decode(s + b"=" * pad, casefold=True)
 
 

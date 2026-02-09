@@ -23,7 +23,7 @@ def build_tcp_payload_v4(
         dst_ip_packed: bytes,
         urgent_ptr: int = 0,
 ) -> bytes:
-    if len(tcp_options) % 4 != 0:
+    if len(tcp_options) & 3:
         raise ValueError("tcp_options length must be a multiple of 4 bytes")
 
     data_offset = 5 + (len(tcp_options) // 4)  # 32-bit words
@@ -81,7 +81,7 @@ def build_tcp_payload_v6(
         dst_ip_packed: bytes,
         urgent_ptr: int = 0,
 ) -> bytes:
-    if len(tcp_options) % 4 != 0:
+    if len(tcp_options) & 3:
         raise ValueError("tcp_options length must be a multiple of 4 bytes")
 
     data_offset = 5 + (len(tcp_options) // 4)
