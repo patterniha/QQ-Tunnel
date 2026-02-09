@@ -92,8 +92,18 @@ def handle_dns_request(data: bytes) -> tuple[int, int, list, int, int]:
 
 
 def create_noerror_empty_response(qid: int, qflags: int, question: bytes) -> bytes:
-    # QR=1, AA=1, RD=copy, RCODE=0 (NOERROR)
-    rflags = 0x8500 if qflags & 0x100 else 0x8400
+    # QR = 1
+    # Opcode = echo
+    # AA = 1
+    # TC = 0
+    # RD = echo
+    # RA = 0
+    # Z  = 0
+    # AD = 0
+    # CD = echo
+    # RCODE = 0 if opcode==0 else 4
+
+    rflags = 0x8400 | (qflags & 0x7910) | (((qflags & 0x7800) != 0) << 2)
 
     header = pack("!HHHHHH", qid, rflags, 1, 0, 0, 0)
 
