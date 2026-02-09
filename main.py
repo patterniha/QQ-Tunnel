@@ -44,7 +44,7 @@ receive_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 receive_socket.setblocking(False)
 if sys.platform == "win32":
     disable_udp_connreset(receive_socket)
-receive_socket.bind((receive_interface_ip_str, 53))
+receive_socket.bind((receive_interface_ip_str, int(config["receive_port"])))
 
 dns_ips = [(ip_str, socket.inet_pton(socket.AF_INET, ip_str)) for ip_str in config["dns_ips"]]
 

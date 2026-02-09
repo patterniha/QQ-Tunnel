@@ -2,6 +2,7 @@
   "dns_ips": [],
   "send_interface_ip": "",
   "receive_interface_ip": "",
+  "receive_port": 53,
   "send_domain": "",
   "recv_domain": "",
   "h_in_address": "127.0.0.1:10443",
