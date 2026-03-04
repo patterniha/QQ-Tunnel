@@ -1,11 +1,5 @@
 from struct import pack, unpack_from
 
-QTYPE_MAP = {
-    "A": 1, "NS": 2, "CNAME": 5, "SOA": 6, "PTR": 12,
-    "HINFO": 13, "MX": 15, "TXT": 16, "AAAA": 28, "SRV": 33,
-    "DS": 43, "DNSKEY": 48, "OPT": 41, "CAA": 257, "ANY": 255,
-}
-
 
 def label_domain(domain: bytes) -> list[bytes]:
     return [label for label in domain.strip(b".").split(b".") if label]

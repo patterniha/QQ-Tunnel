@@ -11,27 +11,23 @@ import sys
 from data_handler import DataHandler
 from utility.socket_tools import disable_udp_connreset
 from utility.base32 import b32decode_nopad
-from utility.dns import QTYPE_MAP, label_domain, encode_qname, build_dns_query, handle_dns_request, \
+from utility.dns import label_domain, encode_qname, build_dns_query, handle_dns_request, \
     create_noerror_empty_response
 from data_cap import get_crc32_bytes, get_base32_final_domains, get_chunk_len, get_chunk_data
 
-SEND_SOCK_NUMBERS = 8192
-
-Q_TYPE = "A"
-
 DATA_OFFSET_WIDTH = 4
 
-##############################
 TOTAL_DATA_OFFSET = 1 << 5 * DATA_OFFSET_WIDTH
 TOTAL_DATA_OFFSET_MINUS_ONE = TOTAL_DATA_OFFSET - 1
-Q_TYPE_INT = QTYPE_MAP[Q_TYPE]
 
 with open(os.path.join(os.path.dirname(sys.argv[0]), "config.json")) as f:
     config = json.loads(f.read())
 
+send_query_type_int = config["send_query_type_int"]
+recv_query_type_int = config["recv_query_type_int"]
 send_interface_ip_str = config["send_interface_ip"]
 send_sock_list = []
-for _ in range(SEND_SOCK_NUMBERS):
+for _ in range(config["send_sock_numbers"]):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setblocking(False)
     if sys.platform == "win32":
@@ -112,7 +108,7 @@ async def h_recv():
             while curr_tries > 0:
                 send_ip_str = dns_ips[iter_send_ip_index]
                 iter_send_ip_index = (iter_send_ip_index + 1) % len(dns_ips)
-                data = build_dns_query(final_domain, use_query_id, Q_TYPE_INT)
+                data = build_dns_query(final_domain, use_query_id, send_query_type_int)
                 await loop.sock_sendto(send_sock, data, (send_ip_str, 53))
                 curr_tries -= 1
 
@@ -125,7 +121,7 @@ async def wan_recv():
         if last_h_addr is not None:
             try:
                 qid, qflags, all_labels, qtype, next_question = handle_dns_request(raw_data)
-                if qtype != Q_TYPE_INT:
+                if qtype != recv_query_type_int:
                     raise ValueError("invalid qtype!")
                 domain_labels = all_labels[-len_recv_domain_labels:]
                 assert [label.lower() for label in domain_labels] == recv_domain_labels
