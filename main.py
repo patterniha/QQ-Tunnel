@@ -25,8 +25,10 @@ with open(os.path.join(os.path.dirname(sys.argv[0]), "config.json")) as f:
 
 send_query_type_int = config["send_query_type_int"]
 recv_query_type_int = config["recv_query_type_int"]
+
 send_interface_ip_str = config["send_interface_ip"]
 send_sock_list = []
+# ulimit -n 32768
 for _ in range(config["send_sock_numbers"]):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setblocking(False)
