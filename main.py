@@ -14,10 +14,8 @@ from utility.base32 import b32decode_nopad
 from utility.dns import QTYPE_MAP, label_domain, encode_qname, build_dns_query, handle_dns_request, \
     create_noerror_empty_response
 from data_cap import get_crc32_bytes, get_base32_final_domains, get_chunk_len, get_chunk_data
-from utility.packets import build_udp_payload_v4
 
-BEGIN_SRC_PORT = 49152
-END_SRC_PORT = 65534
+SEND_SOCK_NUMBERS = 8192
 
 Q_TYPE = "A"
 
@@ -32,21 +30,23 @@ with open(os.path.join(os.path.dirname(sys.argv[0]), "config.json")) as f:
     config = json.loads(f.read())
 
 send_interface_ip_str = config["send_interface_ip"]
-send_interface_ip = socket.inet_pton(socket.AF_INET, send_interface_ip_str)
-send_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_UDP)
-send_socket.setblocking(False)
-send_socket.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 0)
-send_socket.bind((send_interface_ip_str, 0))
+send_sock_list = []
+for _ in range(SEND_SOCK_NUMBERS):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setblocking(False)
+    if sys.platform == "win32":
+        disable_udp_connreset(s)
+    s.bind((send_interface_ip_str, 0))
+    send_sock_list.append(s)
 
 receive_interface_ip_str = config["receive_interface_ip"]
-receive_interface_ip = socket.inet_pton(socket.AF_INET, receive_interface_ip_str)
 receive_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 receive_socket.setblocking(False)
 if sys.platform == "win32":
     disable_udp_connreset(receive_socket)
 receive_socket.bind((receive_interface_ip_str, int(config["receive_port"])))
 
-dns_ips = [(ip_str, socket.inet_pton(socket.AF_INET, ip_str)) for ip_str in config["dns_ips"]]
+dns_ips = config["dns_ips"]
 
 h_inbound_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 h_inbound_socket.setblocking(False)
@@ -80,15 +80,15 @@ else:
 async def h_recv():
     loop = asyncio.get_running_loop()
     global last_h_addr
-    src_port = random.randint(BEGIN_SRC_PORT, END_SRC_PORT)
+    send_sock_index = random.randint(0, len(send_sock_list) - 1)
     query_id = random.randint(0, 65535)
     data_offset = random.randint(0, TOTAL_DATA_OFFSET_MINUS_ONE)
     send_ip_index = random.randint(0, len(dns_ips) - 1)
     while True:
         if h_addr_is_fixed:
-            raw_data = await loop.sock_recv(h_inbound_socket, 4096)
+            raw_data = await loop.sock_recv(h_inbound_socket, 65575)
         else:
-            raw_data, addr_h = await loop.sock_recvfrom(h_inbound_socket, 4096)
+            raw_data, addr_h = await loop.sock_recvfrom(h_inbound_socket, 65575)
             if last_h_addr != addr_h:
                 last_h_addr = addr_h
                 print("the received data is sent to:", addr_h)
@@ -103,21 +103,17 @@ async def h_recv():
         s_iter_send_ip_index = send_ip_index
         send_ip_index = (send_ip_index + tries) % len(dns_ips)
         for final_domain in final_domains:
-            use_src_port = src_port
+            send_sock = send_sock_list[send_sock_index]
+            send_sock_index = (send_sock_index + 1) % len(send_sock_list)
             use_query_id = query_id
-            if src_port != END_SRC_PORT:
-                src_port += 1
-            else:
-                src_port = BEGIN_SRC_PORT
             query_id = (query_id + 1) & 0xFFFF
             iter_send_ip_index = s_iter_send_ip_index
             curr_tries = tries
             while curr_tries > 0:
-                send_ip_str, send_ip = dns_ips[iter_send_ip_index]
+                send_ip_str = dns_ips[iter_send_ip_index]
                 iter_send_ip_index = (iter_send_ip_index + 1) % len(dns_ips)
-                data = build_udp_payload_v4(build_dns_query(final_domain, use_query_id, Q_TYPE_INT), use_src_port, 53,
-                                            send_interface_ip, send_ip)
-                await loop.sock_sendto(send_socket, data, (send_ip_str, 53))  # (send_ip_str, 0)
+                data = build_dns_query(final_domain, use_query_id, Q_TYPE_INT)
+                await loop.sock_sendto(send_sock, data, (send_ip_str, 53))
                 curr_tries -= 1
 
 
@@ -125,7 +121,7 @@ async def wan_recv():
     loop = asyncio.get_running_loop()
     d_handler = DataHandler(TOTAL_DATA_OFFSET, assemble_time)
     while True:
-        raw_data, addr_w = await loop.sock_recvfrom(receive_socket, 4096)
+        raw_data, addr_w = await loop.sock_recvfrom(receive_socket, 65575)
         if last_h_addr is not None:
             try:
                 qid, qflags, all_labels, qtype, next_question = handle_dns_request(raw_data)
