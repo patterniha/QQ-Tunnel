@@ -53,7 +53,7 @@ you need to set 4 DNS records for your domain:
 
 # Tips
 
-1. don't forget to open port 53 on both sides.
+1. don't forget to open udp port 53 on both sides.
 2. make sure dns_ips work before setting them up, the other side always send NOERROR-EMPTY-RESPONSE in response of each request, so first run the tunnel on the other side, then for each dns_ip run "dig @%dns_ip %send_domain %send_query_type", if you receive NOERROR-EMPTY-RESPONSE, it indicates that the dns_ip is working.
 
 
