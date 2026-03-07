@@ -24,7 +24,7 @@ you need to set 4 DNS records for your domain:
 `send_interface_ip`: interface ip that use for sending data, usually your server ip, or if you are behind nat, this is your nat ip.
 `recv_interface_ip`: interface ip that use for receiving data, usually your server ip, or if you are behind nat, this is your nat ip.
 
-`recveive_port`: the port that use for receiving DNS-Query
+`recveive_port`: the port that use for receiving DNS-Query, the prerouting received port is always 53.
 
 `send_domain`: the domain that point to other server, for example for server-1 this is nb.example.com
 `recv_domain`: the domain that you expect to receive, this is other side send_domain, so for example for server-1 this is na.example.com
@@ -49,7 +49,7 @@ you need to set 4 DNS records for your domain:
 `assemble_time`: data may need to splits into parts, and send in multiple DNS-Query, the other side buffer the parts and after all parts of each data is received, it merge them and then send it to kcp/wireguard/hysteria..., this is the timeout for waiting for other parts when the first part is received.
 
 
+# Tips
 
-
-
-
+1. don't forget to open port 53 on both sides.
+2. make sure dns_ips work before setting them up, the other side always send NOERROR-EMPTY-RESPONSE in response of each request, so first run the tunnel on the other side, then for each dns_ip run "dig @%dns_ip %send_domain %send_query_type", if you receive NOERROR-EMPTY-RESPONSE, it indicates that the dns_ip is working.
