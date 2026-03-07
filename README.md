@@ -2,7 +2,7 @@
 Sending and receiving data both with dns query
 
 # How does it work?
-It receive data from a UDP listener and embed it to domains of DNS-Qurey and send.
+It receives data from a UDP listener and embed it to domains of DNS-Qurey and send.
 If needed, it splits the data into multiple parts and then merges them on the other side.
 So for accessing internet, you need a reliable data transfer over UDP like: wireguard/hysteria/kcp/...
 
