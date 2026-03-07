@@ -17,7 +17,7 @@ b.example.com A server-2-ip
 
 nb.example.com NS b.example.com
 
-# Configs help
+# How to config?
 
 dns_ips: list of dns resolvers, you can use multiple resolvers and each time one of them is choosen for sending data (round robin). Be careful, although choosing multiple resolvers improves performance, but if one of them is broken, the tunnel will be disrupted.
 
