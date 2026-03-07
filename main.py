@@ -120,48 +120,50 @@ async def wan_recv():
     d_handler = DataHandler(TOTAL_DATA_OFFSET, assemble_time)
     while True:
         raw_data, addr_w = await loop.sock_recvfrom(receive_socket, 65575)
-        if last_h_addr is not None:
-            try:
-                qid, qflags, all_labels, qtype, next_question = handle_dns_request(raw_data)
-                if qtype != recv_query_type_int:
-                    raise ValueError("invalid qtype!")
-                domain_labels = all_labels[-len_recv_domain_labels:]
-                assert [label.lower() for label in domain_labels] == recv_domain_labels
-            except Exception as e:
-                print("receive invalid request:", raw_data)
-                continue
 
-            try:
-                data_with_header = b"".join(all_labels[:-len_recv_domain_labels])
-                if not data_with_header:
-                    raise ValueError("no header")
-                data_offset, fragment_part, last_fragment, chunk_data = get_chunk_data(data_with_header,
-                                                                                       DATA_OFFSET_WIDTH)
-                if not chunk_data:
-                    raise ValueError("no chunk data")
-                if fragment_part == 63 and not last_fragment:
-                    raise ValueError("last possible fragment part but not last fragment")
-            except Exception as e:
-                # print("error when extracting data", e)
-                pass
-            else:
-                data = await d_handler.new_data_event(data_offset, fragment_part, last_fragment, chunk_data)
-                if data:
-                    try:
-                        data = b32decode_nopad(data)
-                        final_data = data[:-4]
-                        chksum = data[-4:]
-                        assert final_data and len(chksum) == 4 and get_crc32_bytes(final_data, chksum_pass) == chksum
-                    except Exception as e:
-                        print("data-error", e)
+        try:
+            qid, qflags, all_labels, qtype, next_question = handle_dns_request(raw_data)
+            if qtype != recv_query_type_int:
+                raise ValueError("invalid qtype!")
+            domain_labels = all_labels[-len_recv_domain_labels:]
+            assert [label.lower() for label in domain_labels] == recv_domain_labels
+        except Exception as e:
+            print("receive invalid request:", raw_data)
+            continue
+
+        try:
+            if last_h_addr is None:
+                raise ValueError("no last_h_addr")
+            data_with_header = b"".join(all_labels[:-len_recv_domain_labels])
+            if not data_with_header:
+                raise ValueError("no header")
+            data_offset, fragment_part, last_fragment, chunk_data = get_chunk_data(data_with_header,
+                                                                                   DATA_OFFSET_WIDTH)
+            if not chunk_data:
+                raise ValueError("no chunk data")
+            if fragment_part == 63 and not last_fragment:
+                raise ValueError("last possible fragment part but not last fragment")
+        except Exception as e:
+            # print("error when extracting data", e)
+            pass
+        else:
+            data = await d_handler.new_data_event(data_offset, fragment_part, last_fragment, chunk_data)
+            if data:
+                try:
+                    data = b32decode_nopad(data)
+                    final_data = data[:-4]
+                    chksum = data[-4:]
+                    assert final_data and len(chksum) == 4 and get_crc32_bytes(final_data, chksum_pass) == chksum
+                except Exception as e:
+                    print("data-error", e)
+                else:
+                    if h_addr_is_fixed:
+                        await loop.sock_sendall(h_inbound_socket, final_data)
                     else:
-                        if h_addr_is_fixed:
-                            await loop.sock_sendall(h_inbound_socket, final_data)
-                        else:
-                            await loop.sock_sendto(h_inbound_socket, final_data, last_h_addr)
+                        await loop.sock_sendto(h_inbound_socket, final_data, last_h_addr)
 
-            response = create_noerror_empty_response(qid, qflags, raw_data[12:next_question])
-            await loop.sock_sendto(receive_socket, response, addr_w)
+        response = create_noerror_empty_response(qid, qflags, raw_data[12:next_question])
+        await loop.sock_sendto(receive_socket, response, addr_w)
 
 
 async def main():
