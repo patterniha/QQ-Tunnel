@@ -10,9 +10,11 @@ So for accessing internet, you need a reliable data transfer over UDP like: wire
 you need set 4 DNS records for your domain:
 
 a.example.com A server-1-ip
+
 na.example.com NS a.example.com
 
 b.example.com A server-2-ip
+
 nb.example.com NS b.example.com
 
 # Configs help
