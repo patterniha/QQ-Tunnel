@@ -7,7 +7,7 @@ If needed, it splits the data into multiple parts and then merges them on the ot
 So for accessing internet, you need a reliable data transfer over UDP like: wireguard/hysteria/kcp/...
 
 # DNS records
-you need set 4 DNS records for your domain:
+you need to set 4 DNS records for your domain:
 
 a.example.com A server-1-ip
 
