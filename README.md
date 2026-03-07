@@ -42,6 +42,8 @@ you need to set 4 DNS records for your domain:
 `send_query_type_int`: integer query type of sending DNS-Query ("A": 1, "AAAA": 28, "TXT": 16,...)
 `recv_query_type_int`: integer query type of DNS-Query that you expect to receive, this is other side send_query_type_int
 
+`chksum_pass`: the password that prevent to receive unauthorized/corrupted data, must be the same on both sides.
+
 `send_sock_numbers`: number of udp sockets that use for sending data, for bypassing resolvers rate limit, it is better to send data with different source ports (so we use multiple sockets with different source port to send data), you may need to run "ulimit -n 32768" to increase limit of number of file descriptors.
 
 `assemble_time`: data may need to splits into parts, and send in multiple DNS-Query, the other side buffer the parts and after all parts of each data is received, it merge them and then send it to kcp/wireguard/hysteria..., this is the timeout for waiting for other parts when the first part is received.
