@@ -24,11 +24,13 @@ you need to set 4 DNS records for your domain:
 `dns_ips`: list of dns resolvers, you can use multiple resolvers and each time one of them is choosen for sending data (round robin). Be careful, although choosing multiple resolvers improves performance, but if one of them is broken, the tunnel will be disrupted.
 
 `send_interface_ip`: interface ip that use for sending data, usually your server ip, or if you are behind nat, this is your nat ip.
+
 `recv_interface_ip`: interface ip that use for receiving data, usually your server ip, or if you are behind nat, this is your nat ip.
 
 `recveive_port`: the port that use for receiving DNS-Query, the prerouting received port is always 53.
 
 `send_domain`: the domain that point to other server, for example for server-1 this is nb.example.com
+
 `recv_domain`: the domain that you expect to receive, this is other side send_domain, so for example for server-1 this is na.example.com
 
 `h_in_address`: UDP listen address that receive data from hysteria/kcp/wireguard..., in the server that you run hysteria/kcp/wireguard/... client you should set this address as endpoint (target address) in your hysteria/kcp/wireguard/... client config, and in the other side that run hysteria/kcp/wireguard/... server, this address port is not important and you can choose any port.
@@ -42,6 +44,7 @@ you need to set 4 DNS records for your domain:
 `retries`: nubmer of retries, for example if set to 2, each data is send 3 times.all tries is sent immediately, so if you set it to 2, your bandwidth usage is multiplied by 3, because received data usually needs to split into parts, and we may have packet lost for some parts, this option help to reduce packet lost, but increase bandwidth usage (hysteria/kcp/wireguard/... retransmit data if they don't receive it's ACK, so you usually don't need this option)
 
 `send_query_type_int`: integer query type of sending DNS-Query ("A": 1, "AAAA": 28, "TXT": 16,...)
+
 `recv_query_type_int`: integer query type of DNS-Query that you expect to receive, this is other side send_query_type_int
 
 `chksum_pass`: the password that prevent to receive unauthorized/corrupted data, must be the same on both sides.
