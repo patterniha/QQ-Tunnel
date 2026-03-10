@@ -75,6 +75,13 @@ else:
     h_addr_is_fixed = False
 
 
+async def wan_send_task(send_socks_datas: list[tuple[socket.socket, bytes]], send_ip_str: str):
+    loop = asyncio.get_running_loop()
+    for send_sock, data in send_socks_datas:
+        await asyncio.sleep(0.017)
+        await loop.sock_sendto(send_sock, data, (send_ip_str, 53))
+
+
 async def h_recv():
     loop = asyncio.get_running_loop()
     global last_h_addr
@@ -98,21 +105,18 @@ async def h_recv():
         if not final_domains:
             continue
         data_offset = (data_offset + 1) & TOTAL_DATA_OFFSET_MINUS_ONE
-        s_iter_send_ip_index = send_ip_index
-        send_ip_index = (send_ip_index + tries) % len(dns_ips)
+        send_socks_datas = []
         for final_domain in final_domains:
-            send_sock = send_sock_list[send_sock_index]
+            send_socks_datas.append(
+                (send_sock_list[send_sock_index], build_dns_query(final_domain, query_id, send_query_type_int)))
             send_sock_index = (send_sock_index + 1) % len(send_sock_list)
-            use_query_id = query_id
             query_id = (query_id + 1) & 0xFFFF
-            iter_send_ip_index = s_iter_send_ip_index
-            curr_tries = tries
-            while curr_tries > 0:
-                send_ip_str = dns_ips[iter_send_ip_index]
-                iter_send_ip_index = (iter_send_ip_index + 1) % len(dns_ips)
-                data = build_dns_query(final_domain, use_query_id, send_query_type_int)
-                await loop.sock_sendto(send_sock, data, (send_ip_str, 53))
-                curr_tries -= 1
+
+        curr_tries = tries
+        while curr_tries > 0:
+            asyncio.create_task(wan_send_task(send_socks_datas, dns_ips[send_ip_index]))
+            send_ip_index = (send_ip_index + 1) % len(dns_ips)
+            curr_tries -= 1
 
 
 async def wan_recv():
