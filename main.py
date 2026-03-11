@@ -47,9 +47,10 @@ if sys.platform == "win32":
     disable_udp_connreset(receive_socket)
 receive_socket.bind((receive_interface_ip_str, int(config["receive_port"])))
 
-dns_ips_with_lock = []
-for dns_ip in config["dns_ips"]:
-    dns_ips_with_lock.append((dns_ip, asyncio.Lock()))
+dns_ips = config["dns_ips"]
+queues_list: list[asyncio.Queue] = []
+for _ in dns_ips:
+    queues_list.append(asyncio.Queue(maxsize=1024))
 
 h_inbound_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 h_inbound_socket.setblocking(False)
@@ -80,12 +81,12 @@ else:
     h_addr_is_fixed = False
 
 
-async def wan_send_task(send_socks_datas: list[tuple[socket.socket, bytes]], send_ip_str: str, lock: asyncio.Lock):
+async def wan_send_from_queue(queue: asyncio.Queue):
     loop = asyncio.get_running_loop()
-    entry_time = loop.time()
-    async with lock:
+    while True:
+        send_socks_datas, send_ip_str, entry_time = await queue.get()
         if loop.time() - entry_time > packets_max_wait_time:
-            return  # drop
+            continue  # drop
         for send_sock, data in send_socks_datas:
             await asyncio.sleep(packets_send_interval)
             await loop.sock_sendto(send_sock, data, (send_ip_str, 53))
@@ -97,7 +98,8 @@ async def h_recv():
     send_sock_index = random.randint(0, len(send_sock_list) - 1)
     query_id = random.randint(0, 65535)
     data_offset = random.randint(0, TOTAL_DATA_OFFSET_MINUS_ONE)
-    send_ip_index = random.randint(0, len(dns_ips_with_lock) - 1)
+    send_ip_index = random.randint(0, len(dns_ips) - 1)
+    queue_index = random.randint(0, len(queues_list) - 1)
     while True:
         if h_addr_is_fixed:
             raw_data = await loop.sock_recv(h_inbound_socket, 65575)
@@ -123,8 +125,12 @@ async def h_recv():
 
         curr_tries = tries
         while curr_tries > 0:
-            asyncio.create_task(wan_send_task(send_socks_datas, *dns_ips_with_lock[send_ip_index]))
-            send_ip_index = (send_ip_index + 1) % len(dns_ips_with_lock)
+            try:
+                queues_list[queue_index].put_nowait((send_socks_datas, dns_ips[send_ip_index], loop.time()))
+            except asyncio.QueueFull:
+                pass
+            send_ip_index = (send_ip_index + 1) % len(dns_ips)
+            queue_index = (queue_index + 1) % len(queues_list)
             curr_tries -= 1
 
 
@@ -180,10 +186,14 @@ async def wan_recv():
 
 
 async def main():
-    tw = asyncio.create_task(wan_recv())
-    th = asyncio.create_task(h_recv())
+    wait_list = []
+    for queue in queues_list:
+        wait_list.append(asyncio.create_task(wan_send_from_queue(queue)))
+
+    wait_list.append(asyncio.create_task(h_recv()))
+    wait_list.append(asyncio.create_task(wan_recv()))
     print("started...")
-    await asyncio.wait([tw, th], return_when=asyncio.FIRST_COMPLETED)
+    await asyncio.wait(wait_list, return_when=asyncio.FIRST_COMPLETED)
 
 
 asyncio.run(main())
