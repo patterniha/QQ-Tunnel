@@ -78,7 +78,7 @@ else:
 async def wan_send_task(send_socks_datas: list[tuple[socket.socket, bytes]], send_ip_str: str):
     loop = asyncio.get_running_loop()
     for send_sock, data in send_socks_datas:
-        await asyncio.sleep(0.017)
+        await asyncio.sleep(0.001)
         await loop.sock_sendto(send_sock, data, (send_ip_str, 53))
 
 
