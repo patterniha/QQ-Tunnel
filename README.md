@@ -53,6 +53,10 @@ you need to set 4 DNS records for your domain:
 
 `assemble_time`: data may need to splits into parts, and send in multiple DNS-Query, the other side buffer the parts and after all parts of each data is received, it merge them and then send it to kcp/wireguard/hysteria..., this is the timeout (in seconds) for waiting for other parts after the first part is received.
 
+`packets_send_interval`: packets are sent at this interval (in seconds) for each dns_ip, also if data splits into parts, each part is sent at this interval, so the actual time it takes to send a packet will be this value multiplied by the number of parts. this is necessary because most resolvers has rate limit (this value is approximate because asyncio.sleep is not accurate enough for small values)
+
+`packets_max_wait_time`: if we use packets_send_interval, packets are queued to be sent in order. if the waiting time for a packet to be sent exceeds this value (in seconds), it will be dropped.
+
 
 # Tips
 
