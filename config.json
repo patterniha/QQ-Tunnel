@@ -14,6 +14,5 @@
   "recv_query_type_int": 1,
   "chksum_pass": "",
   "send_sock_numbers": 8192,
-  "assemble_time": 5,
-  "send_delay_ms": 1088
+  "assemble_time": 3
 }
