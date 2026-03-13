@@ -84,10 +84,16 @@ else:
 async def wan_send_from_queue(queue: asyncio.Queue):
     loop = asyncio.get_running_loop()
     while True:
-        send_socks_datas, send_ip_str, entry_time = await queue.get()
+        send_socks_datas, send_ip_str, entry_time, curr_try = await queue.get()
         if loop.time() - entry_time > packets_max_wait_time:
             continue  # drop
-        for send_sock, data in send_socks_datas:
+
+        if curr_try & 1 == 0:
+            iter_range = range(len(send_socks_datas))
+        else:
+            iter_range = range(len(send_socks_datas) - 1, -1, -1)
+        for i in iter_range:
+            send_sock, data = send_socks_datas[i]
             await asyncio.sleep(packets_send_interval)
             await loop.sock_sendto(send_sock, data, (send_ip_str, 53))
 
@@ -123,15 +129,15 @@ async def h_recv():
             send_sock_index = (send_sock_index + 1) % len(send_sock_list)
             query_id = (query_id + 1) & 0xFFFF
 
-        curr_tries = tries
-        while curr_tries > 0:
+        curr_try = 0
+        while curr_try < tries:
             try:
-                queues_list[queue_index].put_nowait((send_socks_datas, dns_ips[send_ip_index], loop.time()))
+                queues_list[queue_index].put_nowait((send_socks_datas, dns_ips[send_ip_index], loop.time(), curr_try))
             except asyncio.QueueFull:
                 pass
             send_ip_index = (send_ip_index + 1) % len(dns_ips)
             queue_index = (queue_index + 1) % len(queues_list)
-            curr_tries -= 1
+            curr_try += 1
 
 
 async def wan_recv():

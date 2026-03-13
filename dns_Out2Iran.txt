@@ -1,0 +1,13 @@
+2.188.21.20 // max_domain_length: 151
+2.188.21.100 // max_domain_length: 151
+2.188.21.240 // max_domain_length: 151
+2.188.21.190 // max_domain_length: 151
+2.188.21.120 // max_domain_length: 151
+
+2.188.21.230 // max_domain_length: 101
+2.188.21.200 // max_domain_length: 101
+
+217.218.155.155 // max_domain_length: 101
+217.218.127.127 // max_domain_length: 101
+
+2.189.44.44 // max_domain_length: 99

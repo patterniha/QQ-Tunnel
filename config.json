@@ -7,14 +7,14 @@
   "recv_domain": "",
   "h_in_address": "127.0.0.1:10443",
   "h_out_address": "",
-  "max_domain_len": 98,
+  "max_domain_len": 99,
   "max_sub_len": 63,
-  "retries": 0,
+  "retries": 1,
   "send_query_type_int": 1,
   "recv_query_type_int": 1,
   "chksum_pass": "",
   "send_sock_numbers": 8192,
-  "assemble_time": 5,
+  "assemble_time": 10,
   "packets_send_interval": 0.001,
   "packets_max_wait_time": 1
 }
