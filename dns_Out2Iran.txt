@@ -1,3 +1,5 @@
+// DNS Out2Iran 2026.3.14
+ 
 2.188.21.20 // max_domain_length: 151
 2.188.21.100 // max_domain_length: 151
 2.188.21.240 // max_domain_length: 151
