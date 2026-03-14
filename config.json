@@ -13,8 +13,5 @@
   "send_query_type_int": 1,
   "recv_query_type_int": 1,
   "chksum_pass": "",
-  "send_sock_numbers": 8192,
-  "assemble_time": 10,
-  "packets_send_interval": 0.001,
-  "packets_max_wait_time": 1
+  "send_sock_numbers": 8192
 }

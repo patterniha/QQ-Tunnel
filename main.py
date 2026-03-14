@@ -15,6 +15,11 @@ from utility.dns import label_domain, encode_qname, build_dns_query, handle_dns_
     create_noerror_empty_response
 from data_cap import get_crc32_bytes, get_base32_final_domains, get_chunk_len, get_chunk_data
 
+PACKETS_MAX_WAIT_TIME = 1
+PACKETS_QUEUE_SIZE = 1024
+
+ASSEMBLE_TIME = 10.0
+
 DATA_OFFSET_WIDTH = 4
 
 TOTAL_DATA_OFFSET = 1 << 5 * DATA_OFFSET_WIDTH
@@ -23,8 +28,7 @@ TOTAL_DATA_OFFSET_MINUS_ONE = TOTAL_DATA_OFFSET - 1
 with open(os.path.join(os.path.dirname(sys.argv[0]), "config.json")) as f:
     config = json.loads(f.read())
 
-packets_send_interval = config["packets_send_interval"]
-packets_max_wait_time = config["packets_max_wait_time"]
+
 
 send_query_type_int = config["send_query_type_int"]
 recv_query_type_int = config["recv_query_type_int"]
@@ -50,7 +54,7 @@ receive_socket.bind((receive_interface_ip_str, int(config["receive_port"])))
 dns_ips = config["dns_ips"]
 queues_list: list[asyncio.Queue] = []
 for _ in dns_ips:
-    queues_list.append(asyncio.Queue(maxsize=1024))
+    queues_list.append(asyncio.Queue(maxsize=PACKETS_QUEUE_SIZE))
 
 h_inbound_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 h_inbound_socket.setblocking(False)
@@ -65,7 +69,6 @@ max_sub_len = config["max_sub_len"]
 if max_sub_len > 63:
     sys.exit("max_sub_len cannot be greater than 63!")
 chksum_pass = config["chksum_pass"].encode()
-assemble_time = float(config["assemble_time"])
 tries = config["retries"] + 1
 recv_domain_labels = label_domain(config["recv_domain"].encode().lower())
 len_recv_domain_labels = len(recv_domain_labels)
@@ -85,7 +88,7 @@ async def wan_send_from_queue(queue: asyncio.Queue):
     loop = asyncio.get_running_loop()
     while True:
         send_socks_datas, send_ip_str, entry_time, curr_try = await queue.get()
-        if loop.time() - entry_time > packets_max_wait_time:
+        if loop.time() - entry_time > PACKETS_MAX_WAIT_TIME:
             continue  # drop
 
         if curr_try & 1 == 0:
@@ -94,7 +97,7 @@ async def wan_send_from_queue(queue: asyncio.Queue):
             iter_range = range(len(send_socks_datas) - 1, -1, -1)
         for i in iter_range:
             send_sock, data = send_socks_datas[i]
-            await asyncio.sleep(packets_send_interval)
+            await asyncio.sleep(0.0000001)
             await loop.sock_sendto(send_sock, data, (send_ip_str, 53))
 
 
@@ -142,7 +145,7 @@ async def h_recv():
 
 async def wan_recv():
     loop = asyncio.get_running_loop()
-    d_handler = DataHandler(TOTAL_DATA_OFFSET, assemble_time)
+    d_handler = DataHandler(TOTAL_DATA_OFFSET, ASSEMBLE_TIME)
     while True:
         raw_data, addr_w = await loop.sock_recvfrom(receive_socket, 65575)
 
