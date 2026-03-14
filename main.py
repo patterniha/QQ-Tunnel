@@ -28,8 +28,6 @@ TOTAL_DATA_OFFSET_MINUS_ONE = TOTAL_DATA_OFFSET - 1
 with open(os.path.join(os.path.dirname(sys.argv[0]), "config.json")) as f:
     config = json.loads(f.read())
 
-
-
 send_query_type_int = config["send_query_type_int"]
 recv_query_type_int = config["recv_query_type_int"]
 
@@ -95,10 +93,10 @@ async def wan_send_from_queue(queue: asyncio.Queue):
             iter_range = range(len(send_socks_datas))
         else:
             iter_range = range(len(send_socks_datas) - 1, -1, -1)
-        await asyncio.sleep(0.001)
+
         for i in iter_range:
             send_sock, data = send_socks_datas[i]
-            await asyncio.sleep(0.0000001)
+            await asyncio.sleep(0.001)
             await loop.sock_sendto(send_sock, data, (send_ip_str, 53))
 
 
