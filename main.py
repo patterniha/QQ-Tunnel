@@ -9,11 +9,13 @@ import os
 import sys
 
 from data_handler import DataHandler
-from utility.socket_tools import disable_udp_connreset
+from utility.fix_udp import disable_udp_connreset, block_icmp_port_unreachable
 from utility.base32 import b32decode_nopad
 from utility.dns import label_domain, encode_qname, build_dns_query, handle_dns_request, \
     create_noerror_empty_response
 from data_cap import get_crc32_bytes, get_base32_final_domains, get_chunk_len, get_chunk_data
+
+block_icmp_port_unreachable()
 
 PACKETS_MAX_WAIT_TIME = 1
 PACKETS_QUEUE_SIZE = 1024
