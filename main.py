@@ -95,6 +95,7 @@ async def wan_send_from_queue(queue: asyncio.Queue):
             iter_range = range(len(send_socks_datas))
         else:
             iter_range = range(len(send_socks_datas) - 1, -1, -1)
+        await asyncio.sleep(0.001)
         for i in iter_range:
             send_sock, data = send_socks_datas[i]
             await asyncio.sleep(0.0000001)
