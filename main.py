@@ -9,13 +9,10 @@ import os
 import sys
 
 from data_handler import DataHandler
-from utility.fix_udp import disable_udp_connreset, block_icmp_port_unreachable
 from utility.base32 import b32decode_nopad
 from utility.dns import label_domain, encode_qname, build_dns_query, handle_dns_request, \
     create_noerror_empty_response
 from data_cap import get_crc32_bytes, get_base32_final_domains, get_chunk_len, get_chunk_data
-
-block_icmp_port_unreachable()
 
 PACKETS_MAX_WAIT_TIME = 1
 PACKETS_QUEUE_SIZE = 1024
@@ -27,6 +24,15 @@ DATA_OFFSET_WIDTH = 4
 TOTAL_DATA_OFFSET = 1 << 5 * DATA_OFFSET_WIDTH
 TOTAL_DATA_OFFSET_MINUS_ONE = TOTAL_DATA_OFFSET - 1
 
+
+def create_v4_udp_dgram_socket(blocking: bool, bind_addr: None | tuple) -> socket.socket:
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setblocking(blocking)
+    if bind_addr is not None:
+        s.bind(bind_addr)
+    return s
+
+
 with open(os.path.join(os.path.dirname(sys.argv[0]), "config.json")) as f:
     config = json.loads(f.read())
 
@@ -37,30 +43,17 @@ send_interface_ip_str = config["send_interface_ip"]
 send_sock_list = []
 # ulimit -n 32768
 for _ in range(config["send_sock_numbers"]):
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.setblocking(False)
-    if sys.platform == "win32":
-        disable_udp_connreset(s)
-    s.bind((send_interface_ip_str, 0))
-    send_sock_list.append(s)
+    send_sock_list.append(create_v4_udp_dgram_socket(False, (send_interface_ip_str, 0)))
 
-receive_interface_ip_str = config["receive_interface_ip"]
-receive_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-receive_socket.setblocking(False)
-if sys.platform == "win32":
-    disable_udp_connreset(receive_socket)
-receive_socket.bind((receive_interface_ip_str, int(config["receive_port"])))
+wan_receive_bind_addr = (config["receive_interface_ip"], int(config["receive_port"]))
 
 dns_ips = config["dns_ips"]
 queues_list: list[asyncio.Queue] = []
 for _ in dns_ips:
     queues_list.append(asyncio.Queue(maxsize=PACKETS_QUEUE_SIZE))
 
-h_inbound_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-h_inbound_socket.setblocking(False)
-if sys.platform == "win32":
-    disable_udp_connreset(h_inbound_socket)
-h_inbound_socket.bind((config["h_in_address"].rsplit(":", 1)[0], int(config["h_in_address"].rsplit(":", 1)[1])))
+h_inbound_bind_addr = (config["h_in_address"].rsplit(":", 1)[0], int(config["h_in_address"].rsplit(":", 1)[1]))
+h_inbound_socket = create_v4_udp_dgram_socket(False, h_inbound_bind_addr)
 
 max_encoded_domain_len = config["max_domain_len"] + 2
 if max_encoded_domain_len > 255:
@@ -75,13 +68,11 @@ len_recv_domain_labels = len(recv_domain_labels)
 send_domain_encode_qname = encode_qname(config["send_domain"].encode().lower())
 chunk_len = get_chunk_len(max_encoded_domain_len, len(send_domain_encode_qname), max_sub_len, DATA_OFFSET_WIDTH)
 
+use_fixed_h_addr = False
+last_h_addr = None
 if config["h_out_address"]:
     last_h_addr = (config["h_out_address"].rsplit(":", 1)[0], int(config["h_out_address"].rsplit(":", 1)[1]))
-    h_addr_is_fixed = True
-    h_inbound_socket.connect(last_h_addr)
-else:
-    last_h_addr = None
-    h_addr_is_fixed = False
+    use_fixed_h_addr = True
 
 
 async def wan_send_from_queue(queue: asyncio.Queue):
@@ -104,6 +95,7 @@ async def wan_send_from_queue(queue: asyncio.Queue):
 
 async def h_recv():
     loop = asyncio.get_running_loop()
+    global h_inbound_socket
     global last_h_addr
     send_sock_index = random.randint(0, len(send_sock_list) - 1)
     query_id = random.randint(0, 65535)
@@ -111,13 +103,30 @@ async def h_recv():
     send_ip_index = random.randint(0, len(dns_ips) - 1)
     queue_index = random.randint(0, len(queues_list) - 1)
     while True:
-        if h_addr_is_fixed:
-            raw_data = await loop.sock_recv(h_inbound_socket, 65575)
-        else:
-            raw_data, addr_h = await loop.sock_recvfrom(h_inbound_socket, 65575)
-            if last_h_addr != addr_h:
-                last_h_addr = addr_h
-                print("the received data is sent to:", addr_h)
+        use_h_inbound_socket = h_inbound_socket
+        try:
+            raw_data, addr_h = await loop.sock_recvfrom(use_h_inbound_socket, 65575)
+        except Exception as e:
+            print("h_inbound_socket recv error:", e)
+            use_h_inbound_socket.close()
+            while True:
+                await asyncio.sleep(1)
+                if h_inbound_socket != use_h_inbound_socket:
+                    break
+                try:
+                    h_inbound_socket = create_v4_udp_dgram_socket(False, h_inbound_bind_addr)
+                except Exception as e:
+                    print("h_inbound_socket create error:", e)
+                    continue
+                break
+            continue
+
+        if use_fixed_h_addr:
+            if addr_h != last_h_addr:
+                continue
+        elif last_h_addr != addr_h:
+            last_h_addr = addr_h
+            print("the received data is sent to:", addr_h)
 
         if not raw_data:
             continue
@@ -146,9 +155,24 @@ async def h_recv():
 
 async def wan_recv():
     loop = asyncio.get_running_loop()
+    global h_inbound_socket
+    wan_receive_socket = create_v4_udp_dgram_socket(False, wan_receive_bind_addr)
     d_handler = DataHandler(TOTAL_DATA_OFFSET, ASSEMBLE_TIME)
     while True:
-        raw_data, addr_w = await loop.sock_recvfrom(receive_socket, 65575)
+        try:
+            raw_data, addr_w = await loop.sock_recvfrom(wan_receive_socket, 65575)
+        except Exception as e:
+            print("wan receive socket recv error:", e)
+            wan_receive_socket.close()
+            while True:
+                await asyncio.sleep(1)
+                try:
+                    wan_receive_socket = create_v4_udp_dgram_socket(False, wan_receive_bind_addr)
+                except Exception as e:
+                    print("wan receive socket create error:", e)
+                    continue
+                break
+            continue
 
         try:
             qid, qflags, all_labels, qtype, next_question = handle_dns_request(raw_data)
@@ -186,13 +210,37 @@ async def wan_recv():
                 except Exception as e:
                     print("data-error", e)
                 else:
-                    if h_addr_is_fixed:
-                        await loop.sock_sendall(h_inbound_socket, final_data)
-                    else:
-                        await loop.sock_sendto(h_inbound_socket, final_data, last_h_addr)
+                    use_h_inbound_socket = h_inbound_socket
+                    try:
+                        await loop.sock_sendto(use_h_inbound_socket, final_data, last_h_addr)
+                    except Exception as e:
+                        print("h_inbound_socket send error:", e)
+                        use_h_inbound_socket.close()
+                        while True:
+                            await asyncio.sleep(1)
+                            if h_inbound_socket != use_h_inbound_socket:
+                                break
+                            try:
+                                h_inbound_socket = create_v4_udp_dgram_socket(False, h_inbound_bind_addr)
+                            except Exception as e:
+                                print("h_inbound_socket create error:", e)
+                                continue
+                            break
 
         response = create_noerror_empty_response(qid, qflags, raw_data[12:next_question])
-        await loop.sock_sendto(receive_socket, response, addr_w)
+        try:
+            await loop.sock_sendto(wan_receive_socket, response, addr_w)
+        except Exception as e:
+            print("wan receive socket send error:", e)
+            wan_receive_socket.close()
+            while True:
+                await asyncio.sleep(1)
+                try:
+                    wan_receive_socket = create_v4_udp_dgram_socket(False, wan_receive_bind_addr)
+                except Exception as e:
+                    print("wan receive socket create error:", e)
+                    continue
+                break
 
 
 async def main():
