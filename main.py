@@ -44,15 +44,15 @@ async def exact_sleep(delay: float):
             return
 
 
-if sys.platform == "win32":
-    PACKETS_SEND_SLEEP = exact_sleep
-else:
-    PACKETS_SEND_SLEEP = asyncio.sleep
-
 with open(os.path.join(os.path.dirname(sys.argv[0]), "config.json")) as f:
     config = json.loads(f.read())
 
 packets_send_interval = config["packets_send_interval"]
+
+if ((sys.platform == "win32") and (packets_send_interval < 0.1)) or (packets_send_interval < 0.001):
+    PACKETS_SEND_SLEEP = exact_sleep
+else:
+    PACKETS_SEND_SLEEP = asyncio.sleep
 
 send_query_type_int = config["send_query_type_int"]
 recv_query_type_int = config["recv_query_type_int"]
