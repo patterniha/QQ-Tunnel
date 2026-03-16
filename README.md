@@ -72,6 +72,10 @@ send_query_type_int
 
 `chksum_pass`: the password that prevent to receive unauthorized/corrupted data, must be the same on both sides.
 
+`packets_send_interval`: packets are sent at this interval (in seconds) for each dns_ip, also if data splits into parts,
+each part is sent at this interval, so the actual time it takes to send a packet will be this value multiplied by the
+number of its parts. this is necessary because most resolvers has rate limit.
+
 `send_sock_numbers`: number of udp sockets that use for sending data, for bypassing resolvers rate limit, it is better
 to send data with different source ports (so we use multiple sockets with different source port to send data), you may
 need to run "ulimit -n 32768" to increase limit of number of file descriptors.

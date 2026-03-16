@@ -13,5 +13,6 @@
   "send_query_type_int": 1,
   "recv_query_type_int": 1,
   "chksum_pass": "",
+  "packets_send_interval": 0.001,
   "send_sock_numbers": 8192
 }

@@ -7,6 +7,7 @@ import socket
 import json
 import os
 import sys
+import time
 
 from data_handler import DataHandler
 from utility.base32 import b32decode_nopad
@@ -14,7 +15,6 @@ from utility.dns import label_domain, encode_qname, build_dns_query, handle_dns_
     create_noerror_empty_response
 from data_cap import get_crc32_bytes, get_base32_final_domains, get_chunk_len, get_chunk_data
 
-PACKETS_MAX_WAIT_TIME = 1
 PACKETS_QUEUE_SIZE = 1024
 
 ASSEMBLE_TIME = 10.0
@@ -23,6 +23,8 @@ DATA_OFFSET_WIDTH = 4
 
 TOTAL_DATA_OFFSET = 1 << 5 * DATA_OFFSET_WIDTH
 TOTAL_DATA_OFFSET_MINUS_ONE = TOTAL_DATA_OFFSET - 1
+
+TIME_RESOLUTION = time.get_clock_info("perf_counter").resolution
 
 
 def create_v4_udp_dgram_socket(blocking: bool, bind_addr: None | tuple) -> socket.socket:
@@ -33,8 +35,24 @@ def create_v4_udp_dgram_socket(blocking: bool, bind_addr: None | tuple) -> socke
     return s
 
 
+async def exact_sleep(delay: float):
+    loop = asyncio.get_running_loop()
+    now = loop.time()
+    while True:
+        await asyncio.sleep(TIME_RESOLUTION)
+        if loop.time() - now > delay:
+            return
+
+
+if sys.platform == "win32":
+    PACKETS_SEND_SLEEP = exact_sleep
+else:
+    PACKETS_SEND_SLEEP = asyncio.sleep
+
 with open(os.path.join(os.path.dirname(sys.argv[0]), "config.json")) as f:
     config = json.loads(f.read())
+
+packets_send_interval = config["packets_send_interval"]
 
 send_query_type_int = config["send_query_type_int"]
 recv_query_type_int = config["recv_query_type_int"]
@@ -49,8 +67,6 @@ wan_receive_bind_addr = (config["receive_interface_ip"], int(config["receive_por
 
 dns_ips = config["dns_ips"]
 queues_list: list[asyncio.Queue] = []
-for _ in dns_ips:
-    queues_list.append(asyncio.Queue(maxsize=PACKETS_QUEUE_SIZE))
 
 h_inbound_bind_addr = (config["h_in_address"].rsplit(":", 1)[0], int(config["h_in_address"].rsplit(":", 1)[1]))
 h_inbound_socket = create_v4_udp_dgram_socket(False, h_inbound_bind_addr)
@@ -79,7 +95,7 @@ async def wan_send_from_queue(queue: asyncio.Queue):
     loop = asyncio.get_running_loop()
     while True:
         send_socks_datas, send_ip_str, entry_time, curr_try = await queue.get()
-        if loop.time() - entry_time > PACKETS_MAX_WAIT_TIME:
+        if loop.time() - entry_time > 1:
             continue  # drop
 
         if curr_try & 1 == 0:
@@ -88,9 +104,24 @@ async def wan_send_from_queue(queue: asyncio.Queue):
             iter_range = range(len(send_socks_datas) - 1, -1, -1)
 
         for i in iter_range:
-            send_sock, data = send_socks_datas[i]
-            await asyncio.sleep(0.001)
-            await loop.sock_sendto(send_sock, data, (send_ip_str, 53))
+            await PACKETS_SEND_SLEEP(packets_send_interval)
+            send_sock_index, send_sock, data = send_socks_datas[i]
+            try:
+                await loop.sock_sendto(send_sock, data, (send_ip_str, 53))
+            except Exception as e:
+                print("wan_send_sock send error:", e, send_ip_str, send_sock)
+                send_sock.close()
+                while True:
+                    await asyncio.sleep(1)
+                    if send_sock_list[send_sock_index] != send_sock:
+                        break
+                    try:
+                        send_sock_list[send_sock_index] = create_v4_udp_dgram_socket(False, (send_interface_ip_str, 0))
+                    except Exception as e:
+                        print("wan_send_sock create error:", e)
+                        continue
+                    break
+                break
 
 
 async def h_recv():
@@ -138,7 +169,8 @@ async def h_recv():
         send_socks_datas = []
         for final_domain in final_domains:
             send_socks_datas.append(
-                (send_sock_list[send_sock_index], build_dns_query(final_domain, query_id, send_query_type_int)))
+                (send_sock_index, send_sock_list[send_sock_index],
+                 build_dns_query(final_domain, query_id, send_query_type_int)))
             send_sock_index = (send_sock_index + 1) % len(send_sock_list)
             query_id = (query_id + 1) & 0xFFFF
 
@@ -245,7 +277,9 @@ async def wan_recv():
 
 async def main():
     wait_list = []
-    for queue in queues_list:
+    for _ in dns_ips:
+        queue = asyncio.Queue(maxsize=PACKETS_QUEUE_SIZE)
+        queues_list.append(queue)
         wait_list.append(asyncio.create_task(wan_send_from_queue(queue)))
 
     wait_list.append(asyncio.create_task(h_recv()))
