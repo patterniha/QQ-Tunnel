@@ -42,7 +42,7 @@ your nat ip.
 `recv_domain`: the domain that you expect to receive, this is other side send_domain, so for example for server-1 this
 is na.example.com
 
-`h_in_address`: UDP listen address that receive data from hysteria/kcp/wireguard..., in the server that you run
+`h_in_address`: UDP listen address that receive data from hysteria/kcp/wireguard..., in the side that you run
 hysteria/kcp/wireguard/... client you should set this address as endpoint (target address) in your
 hysteria/kcp/wireguard/... client config, and in the other side that run hysteria/kcp/wireguard/... server, this address
 port is not important and you can choose any port.
