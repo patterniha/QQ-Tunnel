@@ -59,11 +59,9 @@ if you use multiple dns, this value must be set to a minimum value that all dns 
 `max_sub_len`: maximum length of each subdomain-part (parts between two dots), in theory, resolvers should support up to
 63 for each part.
 
-`retries`: nubmer of retries, for example if set to 2, each data is send 3 times.all tries is sent immediately, so if
+`retries`: nubmer of retries, for example if set to 2, each data is send 3 times. all tries is sent immediately, so if
 you set it to 2, your bandwidth usage is multiplied by 3, because received data usually needs to split into parts, and
-we may have packet lost for some parts, this option help to reduce packet lost, but increase bandwidth usage (
-hysteria/kcp/wireguard/... retransmit data if they don't receive it's ACK, so you don't need to set this too high,
-recommend value is 1)
+we may have packet lost for some parts, this option help to reduce packet lost, but increase bandwidth usage
 
 `send_query_type_int`: integer query type of sending DNS-Query ("A": 1, "AAAA": 28, "TXT": 16,...)
 
