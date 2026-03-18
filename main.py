@@ -137,17 +137,19 @@ async def h_recv():
         use_h_inbound_socket = h_inbound_socket
         try:
             raw_data, addr_h = await loop.sock_recvfrom(use_h_inbound_socket, 65575)
+            if not addr_h:
+                raise ValueError("h inbound socket no addr!")
         except Exception as e:
             print("h_inbound_socket recv error:", e)
             use_h_inbound_socket.close()
             while True:
-                await asyncio.sleep(1)
                 if h_inbound_socket != use_h_inbound_socket:
                     break
                 try:
                     h_inbound_socket = create_v4_udp_dgram_socket(False, h_inbound_bind_addr)
                 except Exception as e:
                     print("h_inbound_socket create error:", e)
+                    await asyncio.sleep(1)
                     continue
                 break
             continue
@@ -193,15 +195,17 @@ async def wan_recv():
     while True:
         try:
             raw_data, addr_w = await loop.sock_recvfrom(wan_receive_socket, 65575)
+            if not addr_w:
+                raise ValueError("wan receive socket no addr!")
         except Exception as e:
-            print("wan receive socket recv error:", e)
+            # print("wan receive socket recv error:", e)
             wan_receive_socket.close()
             while True:
-                await asyncio.sleep(1)
                 try:
                     wan_receive_socket = create_v4_udp_dgram_socket(False, wan_receive_bind_addr)
                 except Exception as e:
                     print("wan receive socket create error:", e)
+                    await asyncio.sleep(1)
                     continue
                 break
             continue
@@ -249,13 +253,13 @@ async def wan_recv():
                         print("h_inbound_socket send error:", e)
                         use_h_inbound_socket.close()
                         while True:
-                            await asyncio.sleep(1)
                             if h_inbound_socket != use_h_inbound_socket:
                                 break
                             try:
                                 h_inbound_socket = create_v4_udp_dgram_socket(False, h_inbound_bind_addr)
                             except Exception as e:
                                 print("h_inbound_socket create error:", e)
+                                await asyncio.sleep(1)
                                 continue
                             break
 
@@ -266,11 +270,11 @@ async def wan_recv():
             print("wan receive socket send error:", e)
             wan_receive_socket.close()
             while True:
-                await asyncio.sleep(1)
                 try:
                     wan_receive_socket = create_v4_udp_dgram_socket(False, wan_receive_bind_addr)
                 except Exception as e:
                     print("wan receive socket create error:", e)
+                    await asyncio.sleep(1)
                     continue
                 break
 
