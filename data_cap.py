@@ -7,7 +7,9 @@ from utility.dns import insert_dots
 
 
 def get_crc32_bytes(data: bytes, chksum_pass: bytes) -> bytes:
-    return zlib.crc32(data + chksum_pass).to_bytes(4, byteorder="big")
+    if chksum_pass:
+        return zlib.crc32(data + chksum_pass).to_bytes(4, byteorder="big")
+    return zlib.crc32(data).to_bytes(4, byteorder="big")
 
 
 def compute_max_m(s: int, max_allowed: int) -> int:
