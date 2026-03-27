@@ -141,12 +141,13 @@ async def wan_recv():
                 try:
                     _ = active_clients[client_id]
                 except KeyError:
-                    if len(chunk_data) != 24:
-                        raise ValueError("invalid info")
-                    client_ip_bytes = bytes.fromhex(chunk_data[:8].decode())
-                    client_open_port = int.from_bytes(bytes.fromhex(chunk_data[8:12].decode()), byteorder="big")
-                    c_spoof_src_ip_bytes = bytes.fromhex(chunk_data[12:20])
-                    c_spoof_src_port = int.from_bytes(bytes.fromhex(chunk_data[20:24].decode()), byteorder="big")
+                    info_data = b32decode_nopad(chunk_data)
+                    if len(info_data) != 12:
+                        raise ValueError("invalid info!")
+                    client_ip_bytes = info_data[:4]
+                    client_open_port = int.from_bytes(info_data[4:6], byteorder="big")
+                    c_spoof_src_ip_bytes = info_data[6:10]
+                    c_spoof_src_port = int.from_bytes(info_data[10:12], byteorder="big")
 
                     client_data_handler = DataHandler(TOTAL_DATA_OFFSET, ASSEMBLE_TIME)
                     client_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
