@@ -73,14 +73,16 @@ def get_base32_final_domains(data: bytes, data_offset: int, chunk_len: int, qnam
     return final_b_domains
 
 
-def get_chunk_data(data: bytes, data_offset_width: int):
-    data_offset = base32_to_number(data[:data_offset_width])
+def get_chunk_data(data: bytes, data_offset_width: int, client_id_width: int):
+    client_id = base32_to_number(data[:client_id_width])
+    fp_index = client_id_width + data_offset_width
+    data_offset = base32_to_number(data[client_id_width:fp_index])
 
-    fragment_part_raw = BASE32_LOOKUP[data[data_offset_width]]
+    fragment_part_raw = BASE32_LOOKUP[data[fp_index]]
     if fragment_part_raw < 0:
         raise ValueError("Invalid base32 character in fragment part")
 
-    magic = data[data_offset_width + 1]
+    magic = data[fp_index + 1]
     if magic == 48:  # b"0"
         fragment_part = fragment_part_raw
         last_fragment = False
@@ -96,5 +98,5 @@ def get_chunk_data(data: bytes, data_offset_width: int):
     else:
         raise ValueError("Unknown magic")
 
-    e_data = data[data_offset_width + 2:]
-    return data_offset, fragment_part, last_fragment, e_data
+    e_data = data[fp_index + 2:]
+    return client_id, data_offset, fragment_part, last_fragment, e_data

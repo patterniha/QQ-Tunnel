@@ -140,9 +140,9 @@ async def h_recv(my_public_ip: str):
 
     sub_info = client_id_bytes + b"0" * DATA_OFFSET_WIDTH + b"78" + socket.inet_pton(socket.AF_INET,
                                                                                      my_public_ip).hex().encode() + wan_main_socket_port.to_bytes(
-        2, byteorder="big") + socket.inet_pton(socket.AF_INET,
-                                               fake_send_ip).hex().encode() + fake_send_port.to_bytes(2,
-                                                                                                      byteorder="big")
+        2, byteorder="big").hex().encode() + socket.inet_pton(socket.AF_INET,
+                                                              fake_send_ip).hex().encode() + fake_send_port.to_bytes(2,
+                                                                                                                     byteorder="big").hex().encode()
     info_domain_bytes = insert_dots(sub_info, max_sub_len) + send_domain_encode_qname
     info_data = build_dns_query(info_domain_bytes, query_id, SEND_QUERY_TYPE_INT)
     query_id = (query_id + 1) & 0xFFFF
