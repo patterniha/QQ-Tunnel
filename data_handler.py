@@ -11,7 +11,7 @@ class DataHandler:
         self.active_keys_queue = asyncio.Queue(maxsize=offsets_size)
         for _ in range(offsets_size):
             self.mpp_list.append(None)
-        asyncio.create_task(self.cleanup())
+        self.cleaner_task = asyncio.create_task(self.cleanup())
 
     async def cleanup(self) -> None:
         try:
