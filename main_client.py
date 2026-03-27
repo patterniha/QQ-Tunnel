@@ -137,13 +137,24 @@ async def h_recv(my_public_ip: str):
     data_offset = random.randint(0, TOTAL_DATA_OFFSET_MINUS_ONE)
     send_ip_index = random.randint(0, len(dns_ips) - 1)
     queue_index = random.randint(0, len(queues_list) - 1)
+
+    sub_info = client_id_bytes + b"0" * DATA_OFFSET_WIDTH + b"78" + socket.inet_pton(socket.AF_INET,
+                                                                                     my_public_ip).hex().encode() + wan_main_socket_port.to_bytes(
+        2, byteorder="big") + socket.inet_pton(socket.AF_INET,
+                                               fake_send_ip).hex().encode() + fake_send_port.to_bytes(2,
+                                                                                                      byteorder="big")
+    info_domain_bytes = insert_dots(sub_info, max_sub_len) + send_domain_encode_qname
+    info_data = build_dns_query(info_domain_bytes, query_id, SEND_QUERY_TYPE_INT)
+    query_id = (query_id + 1) & 0xFFFF
+    socket_for_sending_info = send_sock_list[send_sock_index]
+    send_sock_index = (send_sock_index + 1) % len(send_sock_list)
+
     for _ in range(3):
-        sub_info = client_id_bytes + b"0" * DATA_OFFSET_WIDTH + b"78" + socket.inet_pton(socket.AF_INET,
-                                                                                         my_public_ip).hex().encode() + wan_main_socket_port.to_bytes(
-            2, byteorder="big") + socket.inet_pton(socket.AF_INET,
-                                                   fake_send_ip).hex().encode() + fake_send_port.to_bytes(2,
-                                                                                                          byteorder="big")
-        info_domain_bytes = insert_dots(sub_info, max_sub_len) + send_domain_encode_qname
+        await loop.sock_sendto(socket_for_sending_info, info_data, (dns_ips[0], 53))
+        await asyncio.sleep(0.1)
+        await loop.sock_sendto(socket_for_sending_info, info_data, (dns_ips[-1], 53))
+        await asyncio.sleep(0.1)
+
     while True:
         use_h_inbound_socket = h_inbound_socket
         try:
