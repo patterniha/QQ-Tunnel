@@ -246,7 +246,7 @@ async def nat_keep_alive():
     loop = asyncio.get_running_loop()
     while True:
         try:
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             data = os.urandom(random.randint(257, 499))
             await loop.sock_sendto(wan_main_socket, data, (fake_send_ip, fake_send_port))
         except Exception as e:
