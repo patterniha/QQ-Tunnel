@@ -2,7 +2,7 @@
   "dns_ips": [],
   "send_domain": "",
   "fake_send_ip": "",
-  "fake_send_port": "random",
+  "fake_send_port": 443,
   "h_in_address": "127.0.0.1:10443",
   "max_domain_len": 99,
   "max_sub_len": 63,

@@ -88,11 +88,7 @@ wan_main_socket_port = int(wan_main_socket.getsockname()[1])
 client_id = random.randint(0, TOTAL_CLIENT_IDS - 1)
 client_id_bytes = number_to_base32_lower(client_id, CLIENT_ID_WIDTH)
 fake_send_ip = config["fake_send_ip"]
-fake_send_port = config["fake_send_port"]
-if str(fake_send_port) == "random":
-    fake_send_port = random.randint(1, 65535)
-else:
-    fake_send_port = int(fake_send_port)
+fake_send_port = int(config["fake_send_port"])
 
 
 async def wan_send_from_queue(queue: asyncio.Queue):
