@@ -15,13 +15,13 @@ from utility.dns import label_domain, handle_dns_request, \
 from utility.packets import build_udp_payload_v4, build_ipv4_header, UDP_PROTO
 from data_cap import get_crc32_bytes, get_chunk_data
 
-ASSEMBLE_TIME = 1.0
+ASSEMBLE_TIME = 5.0
 
 RECV_QUERY_TYPE_INT = 1
 
 CLIENT_ID_WIDTH = 6
 
-DATA_OFFSET_WIDTH = 2
+DATA_OFFSET_WIDTH = 3
 
 TOTAL_DATA_OFFSET = 1 << 5 * DATA_OFFSET_WIDTH
 TOTAL_DATA_OFFSET_MINUS_ONE = TOTAL_DATA_OFFSET - 1
