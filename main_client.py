@@ -260,7 +260,9 @@ async def get_public_ip_from_json_api(url: str, ip_name: str):
 
 async def main():
     loop = asyncio.get_running_loop()
-    my_public_ip = await get_public_ip_from_json_api("https://ezping.ir/geoip", "ip")
+    my_public_ip = config["my_public_ip"]
+    if my_public_ip == "ezping":
+        my_public_ip = await get_public_ip_from_json_api("https://ezping.ir/geoip", "ip")
     for _ in range(3):
         data = os.urandom(random.randint(257, 499))
         await loop.sock_sendto(wan_main_socket, data, (fake_send_ip, fake_send_port))
