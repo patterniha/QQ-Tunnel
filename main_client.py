@@ -48,7 +48,7 @@ async def exact_sleep(delay: float):
             return
 
 
-with open(os.path.join(os.path.dirname(sys.argv[0]), "config.json")) as f:
+with open(os.path.join(os.path.dirname(sys.argv[0]), "config_client.json")) as f:
     config = json.loads(f.read())
 
 use_mode = config["mode"]

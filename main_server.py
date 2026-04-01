@@ -35,7 +35,7 @@ def create_v4_udp_dgram_socket(blocking: bool, bind_addr: None | tuple) -> socke
     return s
 
 
-with open(os.path.join(os.path.dirname(sys.argv[0]), "config.json")) as f:
+with open(os.path.join(os.path.dirname(sys.argv[0]), "config_server.json")) as f:
     config = json.loads(f.read())
 
 use_mode = config["mode"]
