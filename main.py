@@ -104,7 +104,6 @@ async def wan_send_from_queue(queue: asyncio.Queue):
             iter_range = range(len(send_socks_datas) - 1, -1, -1)
 
         for i in iter_range:
-            await PACKETS_SEND_SLEEP(packets_send_interval)
             send_sock_index, send_sock, data = send_socks_datas[i]
             try:
                 await loop.sock_sendto(send_sock, data, (send_ip_str, 53))
@@ -122,6 +121,7 @@ async def wan_send_from_queue(queue: asyncio.Queue):
                         continue
                     break
                 break
+            await PACKETS_SEND_SLEEP(packets_send_interval)
 
 
 async def h_recv():
