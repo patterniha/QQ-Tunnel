@@ -176,16 +176,17 @@ async def h_recv(my_public_ip: str):
         if not raw_data:
             continue
 
-        if last_h_addr != addr_h:
-            last_h_addr = addr_h
-            print("the received data is sent to:", addr_h)
-
         final_domains = get_base32_final_domains(raw_data, data_offset, chunk_len, send_domain_encode_qname,
                                                  max_sub_len, b"", DATA_OFFSET_WIDTH, max_encoded_domain_len,
                                                  client_id_bytes)
         if not final_domains:
             continue
         data_offset = (data_offset + 1) & TOTAL_DATA_OFFSET_MINUS_ONE
+
+        if last_h_addr != addr_h:
+            last_h_addr = addr_h
+            print("the received data is sent to:", addr_h)
+
         send_socks_datas = []
         contain_info = False
         if (last_wan_recv_time is None) or (loop.time() - last_wan_recv_time > 25):
