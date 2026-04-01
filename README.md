@@ -1,6 +1,6 @@
 # QQ-Tunnel
 
-Sending and receiving data both with dns query
+Sending data with DNS-Query, Receiving data with DNS-Query
 
 # How does it work?
 
