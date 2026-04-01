@@ -75,11 +75,11 @@ def get_base32_final_domains(data: bytes, data_offset: int, chunk_len: int, qnam
 
 def get_chunk_data(data: bytes, data_offset_width: int, client_id_width: int):
     if client_id_width:
-        client_id = base32_to_number(data[:client_id_width])
+        client_id = data[:client_id_width]
         fp_index = client_id_width + data_offset_width
         data_offset = base32_to_number(data[client_id_width:fp_index])
     else:
-        client_id = -1
+        client_id = b""
         fp_index = data_offset_width
         data_offset = base32_to_number(data[:fp_index])
 

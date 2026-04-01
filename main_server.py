@@ -19,7 +19,7 @@ ASSEMBLE_TIME = 5.0
 
 RECV_QUERY_TYPE_INT = 1
 
-CLIENT_ID_WIDTH = 6
+CLIENT_ID_WIDTH = 10
 
 DATA_OFFSET_WIDTH = 3
 
@@ -37,6 +37,14 @@ def create_v4_udp_dgram_socket(blocking: bool, bind_addr: None | tuple) -> socke
 
 with open(os.path.join(os.path.dirname(sys.argv[0]), "config.json")) as f:
     config = json.loads(f.read())
+
+use_mode = config["mode"]
+if use_mode == "1-1":
+    client_id_bytes_len = 0
+elif use_mode == "n-1":
+    client_id_bytes_len = CLIENT_ID_WIDTH
+else:
+    sys.exit("invalid mode!")
 
 wan_receive_bind_addr = ("0.0.0.0", int(config["receive_port"]))
 
@@ -57,16 +65,17 @@ raw_sender_sock.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
 # raw_sender_sock.bind((send_interface_ip,0))
 
 
-async def client_h_recv(client_id, client_data_handler: DataHandler, client_sock: socket.socket, c_spoof_src_ip_bytes,
-                        c_spoof_src_port,
-                        client_ip_bytes,
-                        client_open_port):
+async def client_h_recv(client_id, client_data_handler: DataHandler, client_sock: socket.socket,
+                        client_send_info: list):
     loop = asyncio.get_running_loop()
-    client_ip_str = socket.inet_ntop(socket.AF_INET, client_ip_bytes)
     global ip_id
+    if client_id == b"":
+        timeout = None
+    else:
+        timeout = 30
     while True:
         try:
-            data, addr = await asyncio.wait_for(loop.sock_recvfrom(client_sock, 65575), 30)
+            data, addr = await asyncio.wait_for(loop.sock_recvfrom(client_sock, 65575), timeout=timeout)
             if not addr:
                 raise ValueError("user_sock recv error no addr!")
         except Exception as e:
@@ -78,6 +87,8 @@ async def client_h_recv(client_id, client_data_handler: DataHandler, client_sock
             continue
         if addr != h_out_addr:
             continue
+
+        c_spoof_src_ip_bytes, c_spoof_src_port, client_ip_bytes, client_open_port, client_ip_str = client_send_info
         udp_header_and_data = build_udp_payload_v4(data, c_spoof_src_port, client_open_port, c_spoof_src_ip_bytes,
                                                    client_ip_bytes)
         ip_header = build_ipv4_header(len(udp_header_and_data), c_spoof_src_ip_bytes, client_ip_bytes, UDP_PROTO,
@@ -132,34 +143,37 @@ async def wan_recv():
                 raise ValueError("no header")
             client_id, data_offset, fragment_part, last_fragment, chunk_data = get_chunk_data(data_with_header,
                                                                                               DATA_OFFSET_WIDTH,
-                                                                                              CLIENT_ID_WIDTH)
+                                                                                              client_id_bytes_len)
             if not chunk_data:
                 raise ValueError("no chunk data")
             only_info = False
             if fragment_part == 63 and not last_fragment:
                 only_info = True
+                info_data = b32decode_nopad(chunk_data)
+                if len(info_data) != 12:
+                    raise ValueError("invalid info!")
+                client_ip_bytes = info_data[:4]
+                client_open_port = int.from_bytes(info_data[4:6], byteorder="big")
+                c_spoof_src_ip_bytes = info_data[6:10]
+                c_spoof_src_port = int.from_bytes(info_data[10:12], byteorder="big")
+                client_send_info = [c_spoof_src_ip_bytes, c_spoof_src_port, client_ip_bytes, client_open_port,
+                                    socket.inet_ntop(socket.AF_INET, client_ip_bytes)]
                 try:
-                    _ = active_clients[client_id]
+                    _, _, _, client_save_send_info = active_clients[client_id]
                 except KeyError:
-                    info_data = b32decode_nopad(chunk_data)
-                    if len(info_data) != 12:
-                        raise ValueError("invalid info!")
-                    client_ip_bytes = info_data[:4]
-                    client_open_port = int.from_bytes(info_data[4:6], byteorder="big")
-                    c_spoof_src_ip_bytes = info_data[6:10]
-                    c_spoof_src_port = int.from_bytes(info_data[10:12], byteorder="big")
-
                     client_data_handler = DataHandler(TOTAL_DATA_OFFSET, ASSEMBLE_TIME)
                     client_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                     client_sock.setblocking(False)
                     t = asyncio.create_task(
-                        client_h_recv(client_id, client_data_handler, client_sock, c_spoof_src_ip_bytes,
-                                      c_spoof_src_port, client_ip_bytes,
-                                      client_open_port))
-                    active_clients[client_id] = (t, client_data_handler, client_sock, (c_spoof_src_ip_bytes,
-                                                                                       c_spoof_src_port,
-                                                                                       client_ip_bytes,
-                                                                                       client_open_port))
+                        client_h_recv(client_id, client_data_handler, client_sock, client_send_info))
+                    active_clients[client_id] = (t, client_data_handler, client_sock, client_send_info)
+                else:
+                    if client_save_send_info != client_send_info:
+                        for i in range(len(client_save_send_info)):
+                            client_save_send_info[i] = client_send_info[i]
+
+
+
 
 
         except Exception:

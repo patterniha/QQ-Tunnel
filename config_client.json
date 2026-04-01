@@ -1,4 +1,5 @@
 {
+  "mode": "n-1",
   "dns_ips": [],
   "send_domain": "",
   "fake_send_ip": "",

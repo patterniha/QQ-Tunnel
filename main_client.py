@@ -15,7 +15,7 @@ from utility.dns import encode_qname, build_dns_query, insert_dots
 from utility.base32 import number_to_base32_lower, b32encode_nopad_lower
 from data_cap import get_base32_final_domains, get_chunk_len
 
-CLIENT_ID_WIDTH = 6
+CLIENT_ID_WIDTH = 10
 
 PACKETS_QUEUE_SIZE = 1024
 
@@ -51,6 +51,14 @@ async def exact_sleep(delay: float):
 with open(os.path.join(os.path.dirname(sys.argv[0]), "config.json")) as f:
     config = json.loads(f.read())
 
+use_mode = config["mode"]
+if use_mode == "1-1":
+    client_id_bytes = b""
+elif use_mode == "n-1":
+    client_id_bytes = number_to_base32_lower(random.randint(0, TOTAL_CLIENT_IDS - 1), CLIENT_ID_WIDTH)
+else:
+    sys.exit("invalid mode!")
+
 packets_send_interval = config["packets_send_interval"]
 
 if ((sys.platform == "win32") and (packets_send_interval < 0.1)) or (packets_send_interval < 0.001):
@@ -78,33 +86,35 @@ if max_sub_len > 63:
 tries = config["retries"] + 1
 send_domain_encode_qname = encode_qname(config["send_domain"].encode().lower())
 chunk_len = get_chunk_len(max_encoded_domain_len, len(send_domain_encode_qname), max_sub_len, DATA_OFFSET_WIDTH,
-                          CLIENT_ID_WIDTH)
+                          len(client_id_bytes))
 
 last_h_addr: tuple | None = None
 
 wan_main_socket = create_v4_udp_dgram_socket(False, ("0.0.0.0", 0))
 wan_main_socket_port = int(wan_main_socket.getsockname()[1])
 
-client_id = random.randint(0, TOTAL_CLIENT_IDS - 1)
-client_id_bytes = number_to_base32_lower(client_id, CLIENT_ID_WIDTH)
 fake_send_ip = config["fake_send_ip"]
 fake_send_port = int(config["fake_send_port"])
+
+last_wan_recv_time: float | None = None
 
 
 async def wan_send_from_queue(queue: asyncio.Queue):
     loop = asyncio.get_running_loop()
     while True:
-        send_socks_datas, send_ip_str, entry_time, curr_try = await queue.get()
+        send_socks_datas, send_ip_str, entry_time, curr_try, contain_info = await queue.get()
         if loop.time() - entry_time > 1:
             continue  # drop
 
         if curr_try & 1 == 0:
             iter_range = range(len(send_socks_datas))
         else:
-            iter_range = range(len(send_socks_datas) - 1, -1, -1)
+            if contain_info:
+                iter_range = range(0, -len(send_socks_datas), -1)
+            else:
+                iter_range = range(len(send_socks_datas) - 1, -1, -1)
 
         for i in iter_range:
-            await PACKETS_SEND_SLEEP(packets_send_interval)
             send_sock_index, send_sock, data = send_socks_datas[i]
             try:
                 await loop.sock_sendto(send_sock, data, (send_ip_str, 53))
@@ -122,6 +132,7 @@ async def wan_send_from_queue(queue: asyncio.Queue):
                         continue
                     break
                 break
+            await PACKETS_SEND_SLEEP(packets_send_interval)
 
 
 async def h_recv(my_public_ip: str):
@@ -131,24 +142,15 @@ async def h_recv(my_public_ip: str):
     send_sock_index = random.randint(0, len(send_sock_list) - 1)
     query_id = random.randint(0, 65535)
     data_offset = random.randint(0, TOTAL_DATA_OFFSET_MINUS_ONE)
+    info_offset = random.randint(0, TOTAL_DATA_OFFSET_MINUS_ONE)
     send_ip_index = random.randint(0, len(dns_ips) - 1)
     queue_index = random.randint(0, len(queues_list) - 1)
 
-    sub_info = client_id_bytes + b"a" * DATA_OFFSET_WIDTH + b"78" + b32encode_nopad_lower(
+    info_raw_data = b32encode_nopad_lower(
         socket.inet_pton(socket.AF_INET, my_public_ip) + wan_main_socket_port.to_bytes(2,
                                                                                        byteorder="big") + socket.inet_pton(
             socket.AF_INET, fake_send_ip) + fake_send_port.to_bytes(2, byteorder="big"))
-    info_domain_bytes = insert_dots(sub_info, max_sub_len) + send_domain_encode_qname
-    info_data = build_dns_query(info_domain_bytes, query_id, SEND_QUERY_TYPE_INT)
-    query_id = (query_id + 1) & 0xFFFF
-    socket_for_sending_info = send_sock_list[send_sock_index]
-    send_sock_index = (send_sock_index + 1) % len(send_sock_list)
-
-    for _ in range(3):
-        await loop.sock_sendto(socket_for_sending_info, info_data, (dns_ips[0], 53))
-        await asyncio.sleep(0.1)
-        await loop.sock_sendto(socket_for_sending_info, info_data, (dns_ips[-1], 53))
-        await asyncio.sleep(0.1)
+    info_raw_header_data = b"78" + info_raw_data
 
     while True:
         use_h_inbound_socket = h_inbound_socket
@@ -171,12 +173,13 @@ async def h_recv(my_public_ip: str):
                 break
             continue
 
+        if not raw_data:
+            continue
+
         if last_h_addr != addr_h:
             last_h_addr = addr_h
             print("the received data is sent to:", addr_h)
 
-        if not raw_data:
-            continue
         final_domains = get_base32_final_domains(raw_data, data_offset, chunk_len, send_domain_encode_qname,
                                                  max_sub_len, b"", DATA_OFFSET_WIDTH, max_encoded_domain_len,
                                                  client_id_bytes)
@@ -184,6 +187,19 @@ async def h_recv(my_public_ip: str):
             continue
         data_offset = (data_offset + 1) & TOTAL_DATA_OFFSET_MINUS_ONE
         send_socks_datas = []
+        contain_info = False
+        if (last_wan_recv_time is None) or (loop.time() - last_wan_recv_time > 25):
+            ###
+            contain_info = True
+            sub_info = number_to_base32_lower(info_offset, DATA_OFFSET_WIDTH) + info_raw_header_data
+            info_offset = (info_offset + 1) & TOTAL_DATA_OFFSET_MINUS_ONE
+            info_domain_bytes = insert_dots(sub_info, max_sub_len) + send_domain_encode_qname
+
+            send_socks_datas.append((send_sock_index, send_sock_list[send_sock_index],
+                                     build_dns_query(info_domain_bytes, query_id, SEND_QUERY_TYPE_INT)))
+            send_sock_index = (send_sock_index + 1) % len(send_sock_list)
+            query_id = (query_id + 1) & 0xFFFF
+            ###
         for final_domain in final_domains:
             send_socks_datas.append(
                 (send_sock_index, send_sock_list[send_sock_index],
@@ -194,7 +210,8 @@ async def h_recv(my_public_ip: str):
         curr_try = 0
         while curr_try < tries:
             try:
-                queues_list[queue_index].put_nowait((send_socks_datas, dns_ips[send_ip_index], loop.time(), curr_try))
+                queues_list[queue_index].put_nowait(
+                    (send_socks_datas, dns_ips[send_ip_index], loop.time(), curr_try, contain_info))
             except asyncio.QueueFull:
                 pass
             send_ip_index = (send_ip_index + 1) % len(dns_ips)
@@ -205,6 +222,7 @@ async def h_recv(my_public_ip: str):
 async def wan_recv():
     loop = asyncio.get_running_loop()
     global h_inbound_socket
+    global last_wan_recv_time
     while True:
         try:
             data, addr_w = await loop.sock_recvfrom(wan_main_socket, 65575)
@@ -219,6 +237,8 @@ async def wan_recv():
 
         if last_h_addr is None:
             continue
+
+        last_wan_recv_time = loop.time()
 
         use_h_inbound_socket = h_inbound_socket
         try:
