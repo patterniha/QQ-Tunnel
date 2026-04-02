@@ -79,8 +79,10 @@ if max_sub_len > 63:
     sys.exit("max_sub_len cannot be greater than 63!")
 chksum_pass = config["chksum_pass"].encode()
 tries = config["retries"] + 1
-recv_domain_labels = label_domain(config["recv_domain"].encode().lower())
-len_recv_domain_labels = len(recv_domain_labels)
+all_recv_domains_labels = []
+for recv_domain in config["recv_domains"]:
+    all_recv_domains_labels.append(label_domain(recv_domain.encode().lower()))
+
 send_domain_encode_qname = encode_qname(config["send_domain"].encode().lower())
 chunk_len = get_chunk_len(max_encoded_domain_len, len(send_domain_encode_qname), max_sub_len, DATA_OFFSET_WIDTH)
 
@@ -214,8 +216,17 @@ async def wan_recv():
             qid, qflags, all_labels, qtype, next_question = handle_dns_request(raw_data)
             if qtype != recv_query_type_int:
                 raise ValueError("invalid qtype!")
-            domain_labels = all_labels[-len_recv_domain_labels:]
-            assert [label.lower() for label in domain_labels] == recv_domain_labels
+
+            accepted_recv_domain_labels_len = 0
+            for recv_domain_labels in all_recv_domains_labels:
+                len_recv_domain_labels = len(recv_domain_labels)
+                if all_labels[-len_recv_domain_labels:] == recv_domain_labels:
+                    accepted_recv_domain_labels_len = len_recv_domain_labels
+                    break
+            if accepted_recv_domain_labels_len == 0:
+                raise ValueError("no accepted recv_domain_labels")
+
+
         except Exception as e:
             print("receive invalid request:", raw_data)
             continue
@@ -223,7 +234,7 @@ async def wan_recv():
         try:
             if last_h_addr is None:
                 raise ValueError("no last_h_addr")
-            data_with_header = b"".join(all_labels[:-len_recv_domain_labels])
+            data_with_header = b"".join(all_labels[:-accepted_recv_domain_labels_len])
             if not data_with_header:
                 raise ValueError("no header")
             data_offset, fragment_part, last_fragment, chunk_data = get_chunk_data(data_with_header,
