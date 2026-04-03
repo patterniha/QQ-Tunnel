@@ -39,8 +39,7 @@ your nat ip.
 
 `send_domain`: the domain that point to other server, for example for server-1 this is nb.example.com
 
-`recv_domain`: the domain that you expect to receive, this is other side send_domain, so for example for server-1 this
-is na.example.com
+`recv_domains`: list of domains that the other side can use for send_domain.
 
 `h_in_address`: UDP listen address that receive data from hysteria/kcp/wireguard..., in the side that you run
 hysteria/kcp/wireguard/... client you should set this address as endpoint (target address) in your
