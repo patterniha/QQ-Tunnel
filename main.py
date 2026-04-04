@@ -7,7 +7,6 @@ import socket
 import json
 import os
 import sys
-import time
 
 from data_handler import DataHandler
 from utility.base32 import b32decode_nopad
@@ -24,8 +23,6 @@ DATA_OFFSET_WIDTH = 4
 TOTAL_DATA_OFFSET = 1 << 5 * DATA_OFFSET_WIDTH
 TOTAL_DATA_OFFSET_MINUS_ONE = TOTAL_DATA_OFFSET - 1
 
-TIME_RESOLUTION = time.get_clock_info("perf_counter").resolution
-
 
 def create_v4_udp_dgram_socket(blocking: bool, bind_addr: None | tuple) -> socket.socket:
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -35,24 +32,8 @@ def create_v4_udp_dgram_socket(blocking: bool, bind_addr: None | tuple) -> socke
     return s
 
 
-async def exact_sleep(delay: float):
-    loop = asyncio.get_running_loop()
-    now = loop.time()
-    while True:
-        await asyncio.sleep(TIME_RESOLUTION)
-        if loop.time() - now > delay:
-            return
-
-
 with open(os.path.join(os.path.dirname(sys.argv[0]), "config.json")) as f:
     config = json.loads(f.read())
-
-packets_send_interval = config["packets_send_interval"]
-
-if ((sys.platform == "win32") and (packets_send_interval < 0.1)) or (packets_send_interval < 0.001):
-    PACKETS_SEND_SLEEP = exact_sleep
-else:
-    PACKETS_SEND_SLEEP = asyncio.sleep
 
 send_query_type_int = config["send_query_type_int"]
 recv_query_type_int = config["recv_query_type_int"]
@@ -123,7 +104,7 @@ async def wan_send_from_queue(queue: asyncio.Queue):
                         continue
                     break
                 break
-            await PACKETS_SEND_SLEEP(packets_send_interval)
+            await asyncio.sleep(0.0000001)
 
 
 async def h_recv():
