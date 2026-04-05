@@ -36,7 +36,6 @@ with open(os.path.join(os.path.dirname(sys.argv[0]), "config.json")) as f:
     config = json.loads(f.read())
 
 send_query_type_int = config["send_query_type_int"]
-recv_query_type_int = config["recv_query_type_int"]
 
 send_interface_ip_str = config["send_interface_ip"]
 send_sock_list = []
@@ -195,8 +194,6 @@ async def wan_recv():
 
         try:
             qid, qflags, all_labels, qtype, next_question = handle_dns_request(raw_data)
-            if qtype != recv_query_type_int:
-                raise ValueError("invalid qtype!")
 
             accepted_recv_domain_labels_len = 0
             for recv_domain_labels in all_recv_domains_labels:

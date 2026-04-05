@@ -11,6 +11,5 @@
   "max_sub_len": 63,
   "retries": 1,
   "send_query_type_int": 1,
-  "recv_query_type_int": 1,
   "send_sock_numbers": 512
 }
