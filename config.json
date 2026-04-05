@@ -12,6 +12,5 @@
   "retries": 1,
   "send_query_type_int": 1,
   "recv_query_type_int": 1,
-  "chksum_pass": "",
   "send_sock_numbers": 512
 }

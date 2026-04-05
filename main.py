@@ -12,7 +12,7 @@ from data_handler import DataHandler
 from utility.base32 import b32decode_nopad
 from utility.dns import label_domain, encode_qname, build_dns_query, handle_dns_request, \
     create_noerror_empty_response
-from data_cap import get_crc32_bytes, get_base32_final_domains, get_chunk_len, get_chunk_data
+from data_cap import get_base32_final_domains, get_chunk_len, get_chunk_data
 
 PACKETS_QUEUE_SIZE = 1024
 
@@ -58,7 +58,7 @@ if max_encoded_domain_len > 255:
 max_sub_len = config["max_sub_len"]
 if max_sub_len > 63:
     sys.exit("max_sub_len cannot be greater than 63!")
-chksum_pass = config["chksum_pass"].encode()
+
 tries = config["retries"] + 1
 all_recv_domains_labels = []
 for recv_domain in config["recv_domains"]:
@@ -147,7 +147,7 @@ async def h_recv():
         if not raw_data:
             continue
         final_domains = get_base32_final_domains(raw_data, data_offset, chunk_len, send_domain_encode_qname,
-                                                 max_sub_len, chksum_pass, DATA_OFFSET_WIDTH, max_encoded_domain_len)
+                                                 max_sub_len, DATA_OFFSET_WIDTH, max_encoded_domain_len)
         if not final_domains:
             continue
         data_offset = (data_offset + 1) & TOTAL_DATA_OFFSET_MINUS_ONE
@@ -232,15 +232,12 @@ async def wan_recv():
             if data:
                 try:
                     data = b32decode_nopad(data)
-                    final_data = data[:-4]
-                    chksum = data[-4:]
-                    assert final_data and len(chksum) == 4 and get_crc32_bytes(final_data, chksum_pass) == chksum
                 except Exception as e:
                     print("data-error", e)
                 else:
                     use_h_inbound_socket = h_inbound_socket
                     try:
-                        await loop.sock_sendto(use_h_inbound_socket, final_data, last_h_addr)
+                        await loop.sock_sendto(use_h_inbound_socket, data, last_h_addr)
                     except Exception as e:
                         print("h_inbound_socket send error:", e)
                         use_h_inbound_socket.close()
