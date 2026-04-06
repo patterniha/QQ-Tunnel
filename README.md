@@ -67,8 +67,6 @@ we may have packet lost for some parts, this option help to reduce packet lost, 
 
 `send_query_type_int`: integer query type of sending DNS-Query ("A": 1, "AAAA": 28, "TXT": 16,...)
 
-`chksum_pass`: the password that prevent to receive unauthorized/corrupted data, must be the same on both sides.
-
 `send_sock_numbers`: number of udp sockets that use for sending data, for bypassing resolvers rate limit, it is better
 to send data with different source ports (so we use multiple sockets with different source port to send data), you may
 need to run "ulimit -n 32768" to increase limit of number of file descriptors.
