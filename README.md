@@ -67,9 +67,6 @@ we may have packet lost for some parts, this option help to reduce packet lost, 
 
 `send_query_type_int`: integer query type of sending DNS-Query ("A": 1, "AAAA": 28, "TXT": 16,...)
 
-`recv_query_type_int`: integer query type of DNS-Query that you expect to receive, this is other side
-send_query_type_int
-
 `chksum_pass`: the password that prevent to receive unauthorized/corrupted data, must be the same on both sides.
 
 `send_sock_numbers`: number of udp sockets that use for sending data, for bypassing resolvers rate limit, it is better
