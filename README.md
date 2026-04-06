@@ -35,7 +35,10 @@ your nat ip.
 `recv_interface_ip`: interface ip that use for receiving data, usually your server ip, or if you are behind nat, this is
 your nat ip.
 
-`recveive_port`: the port that use for receiving DNS-Query, the prerouting received port is always 53.
+`recveive_port`: the port that use for receiving DNS-Query, the prerouting received port is always 53, if udp port 53 is
+used by systemd-resolved, you can use another port like 5353 and then redirect udp port 53 to 5353
+("sudo iptables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-port 5353") and also accept udp port 5353
+("sudo iptables -A INPUT -p udp --dport 5353 -j ACCEPT")
 
 `send_domain`: the domain that point to other server, for example for server-1 this is nb.example.com
 
@@ -75,8 +78,7 @@ need to run "ulimit -n 32768" to increase limit of number of file descriptors.
 
 # Tips
 
-1. don't forget to open udp port 53 on both sides.
-2. make sure dns_ips work before setting them up, the other side always send NOERROR-EMPTY-RESPONSE in response of each
+1. make sure dns_ips work before setting them up, the other side always send NOERROR-EMPTY-RESPONSE in response of each
    request, so first run the tunnel on the other side, then for each dns_ip run "dig @%dns_ip %send_domain
    %send_query_type", if you receive NOERROR-EMPTY-RESPONSE, it indicates that the dns_ip is working.
    also, dns_Out2Iran.txt file contains some scanned dns to use for outside-to-Iran and there are many more options for
