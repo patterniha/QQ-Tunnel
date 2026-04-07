@@ -7,7 +7,7 @@
   "recv_domains": [],
   "h_in_address": "127.0.0.1:10443",
   "h_out_address": "",
-  "max_domain_len": 99,
+  "max_domain_len": 253,
   "max_sub_len": 63,
   "retries": 1,
   "send_query_type_int": 1,
