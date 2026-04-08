@@ -16,9 +16,11 @@ from data_cap import get_base32_final_domains, get_chunk_len, get_chunk_data
 
 PACKETS_QUEUE_SIZE = 1024
 
-ASSEMBLE_TIME = 10.0
+ASSEMBLE_TIME = 13.0
 
-DATA_OFFSET_WIDTH = 4
+DATA_OFFSET_WIDTH = 3
+
+DROP_DELAYED_PACKETS_TIME = 1
 
 TOTAL_DATA_OFFSET = 1 << 5 * DATA_OFFSET_WIDTH
 TOTAL_DATA_OFFSET_MINUS_ONE = TOTAL_DATA_OFFSET - 1
@@ -93,8 +95,9 @@ async def wan_send_from_queue(queue: asyncio.Queue):
     loop = asyncio.get_running_loop()
     while True:
         send_socks_datas, send_ip_str, entry_time, curr_try = await queue.get()
-        if loop.time() - entry_time > 1:
-            continue  # drop
+        if loop.time() - entry_time > DROP_DELAYED_PACKETS_TIME:
+            print("drop delayed packet")
+            continue
 
         if curr_try & 1 == 0:
             iter_range = range(len(send_socks_datas))
