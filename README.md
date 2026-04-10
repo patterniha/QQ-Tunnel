@@ -40,7 +40,7 @@ used by systemd-resolved, you can use another port like 5353 and then redirect u
 ("sudo iptables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-port 5353") and also accept udp port 5353
 ("sudo iptables -A INPUT -p udp --dport 5353 -j ACCEPT")
 
-`send_domain`: the domain that point to other server, for example for server-1 this is nb.example.com
+`send_domains`: the list of domains that point to other server.
 
 `recv_domains`: list of domains that the other side can use for send_domain.
 

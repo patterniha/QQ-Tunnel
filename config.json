@@ -3,7 +3,7 @@
   "send_interface_ip": "",
   "receive_interface_ip": "",
   "receive_port": 53,
-  "send_domain": "",
+  "send_domains": [],
   "recv_domains": [],
   "h_in_address": "127.0.0.1:10443",
   "h_out_address": "",

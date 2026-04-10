@@ -81,8 +81,11 @@ all_recv_domains_labels = []
 for recv_domain in config["recv_domains"]:
     all_recv_domains_labels.append(label_domain(recv_domain.encode().lower()))
 
-send_domain_encode_qname = encode_qname(config["send_domain"].encode().lower())
-chunk_len = get_chunk_len(max_encoded_domain_len, len(send_domain_encode_qname), max_sub_len, DATA_OFFSET_WIDTH)
+send_doms_with_chunk_len_list = []
+for send_domain in config["send_domains"]:
+    sdeq = encode_qname(send_domain.encode().lower())
+    send_doms_with_chunk_len_list.append(
+        (sdeq, get_chunk_len(max_encoded_domain_len, len(sdeq), max_sub_len, DATA_OFFSET_WIDTH)))
 
 use_fixed_h_addr = False
 last_h_addr = None
@@ -134,6 +137,7 @@ async def h_recv():
     data_offset = random.randint(0, TOTAL_DATA_OFFSET_MINUS_ONE)
     send_ip_index = random.randint(0, len(dns_ips) - 1)
     queue_index = random.randint(0, len(queues_list) - 1)
+    send_domain_index = random.randint(0, len(send_doms_with_chunk_len_list) - 1)
     while True:
         use_h_inbound_socket = h_inbound_socket
         try:
@@ -164,11 +168,12 @@ async def h_recv():
 
         if not raw_data:
             continue
-        final_domains = get_base32_final_domains(raw_data, data_offset, chunk_len, send_domain_encode_qname,
+        final_domains = get_base32_final_domains(raw_data, data_offset, send_domain_index, send_doms_with_chunk_len_list,
                                                  max_sub_len, DATA_OFFSET_WIDTH, max_encoded_domain_len)
         if not final_domains:
             continue
         data_offset = (data_offset + 1) & TOTAL_DATA_OFFSET_MINUS_ONE
+        send_domain_index = (send_domain_index + len(final_domains)) % len(send_doms_with_chunk_len_list)
         send_socks_datas = []
         for final_domain in final_domains:
             send_socks_datas.append(
