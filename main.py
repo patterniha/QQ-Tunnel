@@ -20,8 +20,6 @@ ASSEMBLE_TIME = 13.0
 
 DATA_OFFSET_WIDTH = 3
 
-DROP_DELAYED_PACKETS_TIME = 1
-
 TOTAL_DATA_OFFSET = 1 << 5 * DATA_OFFSET_WIDTH
 TOTAL_DATA_OFFSET_MINUS_ONE = TOTAL_DATA_OFFSET - 1
 
@@ -45,6 +43,8 @@ async def accurate_sleep(delay: float):
 
 with open(os.path.join(os.path.dirname(sys.argv[0]), "config.json")) as f:
     config = json.loads(f.read())
+
+packets_wait_time_limit = config["packets_wait_time_limit"]
 
 packets_send_interval = config["packets_send_interval"]
 
@@ -98,7 +98,7 @@ async def wan_send_from_queue(queue: asyncio.Queue):
     loop = asyncio.get_running_loop()
     while True:
         send_socks_datas, send_ip_str, entry_time, curr_try = await queue.get()
-        if loop.time() - entry_time > DROP_DELAYED_PACKETS_TIME:
+        if loop.time() - entry_time > packets_wait_time_limit:
             print("drop delayed packet")
             continue
 
@@ -115,7 +115,7 @@ async def wan_send_from_queue(queue: asyncio.Queue):
                 print("wan_send_sock send error:", e, send_ip_str, send_sock)
                 send_sock.close()
                 while True:
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(packets_wait_time_limit)
                     if send_sock_list[send_sock_index] != send_sock:
                         break
                     try:
@@ -168,7 +168,8 @@ async def h_recv():
 
         if not raw_data:
             continue
-        final_domains = get_base32_final_domains(raw_data, data_offset, send_domain_index, send_doms_with_chunk_len_list,
+        final_domains = get_base32_final_domains(raw_data, data_offset, send_domain_index,
+                                                 send_doms_with_chunk_len_list,
                                                  max_sub_len, DATA_OFFSET_WIDTH, max_encoded_domain_len)
         if not final_domains:
             continue

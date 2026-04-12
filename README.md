@@ -71,6 +71,9 @@ we may have packet lost for some parts, this option help to reduce packet lost, 
 each part is sent at this interval, so the actual time it takes to send a packet will be this value multiplied by the
 number of its parts. this is necessary because most resolvers has rate limit.
 
+`packets_wait_time_limit`: when using packets_send_interval, packets are queued to be sent. packets that wait longer
+than this time (in seconds) will be dropped and not sent to the other side.
+
 `send_sock_numbers`: number of udp sockets that use for sending data, for bypassing resolvers rate limit, it is better
 to send data with different source ports (so we use multiple sockets with different source port to send data), you may
 need to run "ulimit -n 32768" to increase limit of number of file descriptors.
